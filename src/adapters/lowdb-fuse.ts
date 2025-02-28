@@ -281,19 +281,6 @@ export class LowDBFuseKnowledgeGraphManager
   }
 
   /**
-   * Read the entire knowledge graph
-   * @returns Knowledge graph
-   */
-  async readGraph(): Promise<KnowledgeGraph> {
-    await this.initialize();
-
-    return {
-      entities: [...this.db.data!.entities],
-      relations: [...this.db.data!.relations],
-    };
-  }
-
-  /**
    * Search for entities
    * @param query Search query
    * @returns Knowledge graph with matching entities and their relations

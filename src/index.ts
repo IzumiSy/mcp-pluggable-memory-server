@@ -134,19 +134,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return {
         content: [{ type: "text", text: "Relations deleted successfully" }],
       };
-    case "read_graph":
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              await knowledgeGraphManager.readGraph(),
-              null,
-              2
-            ),
-          },
-        ],
-      };
     case "search_nodes":
       return {
         content: [
