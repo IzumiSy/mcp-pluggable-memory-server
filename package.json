@@ -2,15 +2,16 @@
   "name": "@izumisy/mcp-pluggable-memory-server",
   "version": "1.0.0",
   "description": "MCP Pluggable Memory Server",
+  "type": "module",
   "main": "index.js",
   "scripts": {
-    "build": "tsup src/index.ts && shx chmod +x dist/index.js",
+    "build": "tsup src/index.ts && shx chmod +x dist/index.mjs",
     "prepare": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "bin": {
-    "mcp-pluggable-memory-server": "dist/index.js"
+    "mcp-pluggable-memory-server": "dist/index.mjs"
   },
   "files": [
     "dist"
