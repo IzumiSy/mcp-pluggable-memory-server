@@ -296,13 +296,13 @@ export class LowDBFuseKnowledgeGraphManager
   /**
    * Search for entities
    * @param query Search query
-   * @returns Array of matching entities
+   * @returns Knowledge graph with matching entities and their relations
    */
-  async searchNodes(query: string): Promise<Entity[]> {
+  async searchNodes(query: string): Promise<KnowledgeGraph> {
     await this.initialize();
 
     if (!query || query.trim() === "") {
-      return [];
+      return { entities: [], relations: [] };
     }
 
     // Execute search with Fuse.js
@@ -316,20 +316,50 @@ export class LowDBFuseKnowledgeGraphManager
       }
     }
 
-    return Array.from(uniqueEntities.values());
+    const entities = Array.from(uniqueEntities.values());
+
+    // Get entity names for relation filtering
+    const entityNames = new Set(entities.map((entity) => entity.name));
+
+    // Filter relations that involve the found entities
+    const relations = this.db.data!.relations.filter(
+      (relation) =>
+        entityNames.has(relation.from) || entityNames.has(relation.to)
+    );
+
+    return {
+      entities,
+      relations,
+    };
   }
 
   /**
    * Get entities by name
    * @param names Array of entity names
-   * @returns Array of matching entities
+   * @returns Knowledge graph with matching entities and their relations
    */
-  async openNodes(names: string[]): Promise<Entity[]> {
+  async openNodes(names: string[]): Promise<KnowledgeGraph> {
     await this.initialize();
 
     const nameSet = new Set(names);
 
     // Filter entities by name
-    return this.db.data!.entities.filter((entity) => nameSet.has(entity.name));
+    const entities = this.db.data!.entities.filter((entity) =>
+      nameSet.has(entity.name)
+    );
+
+    // Get entity names for relation filtering
+    const entityNames = new Set(entities.map((entity) => entity.name));
+
+    // Filter relations that involve the found entities
+    const relations = this.db.data!.relations.filter(
+      (relation) =>
+        entityNames.has(relation.from) || entityNames.has(relation.to)
+    );
+
+    return {
+      entities,
+      relations,
+    };
   }
 }

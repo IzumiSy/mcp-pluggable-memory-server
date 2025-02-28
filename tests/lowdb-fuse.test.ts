@@ -419,8 +419,35 @@ describe("LowDBFuseKnowledgeGraphManager", () => {
       const results = await manager.searchNodes("John Smith");
 
       // Verify results
-      expect(results.length).toBeGreaterThan(0);
-      expect(results.some((entity) => entity.name === "John Smith")).toBe(true);
+      expect(results.entities.length).toBeGreaterThan(0);
+      expect(
+        results.entities.some((entity) => entity.name === "John Smith")
+      ).toBe(true);
+    });
+
+    it("should return relations involving found entities", async () => {
+      // Create entities and relations
+      await createTestData();
+
+      // Search by name
+      const results = await manager.searchNodes("John Smith");
+
+      // Verify relations
+      expect(results.relations.length).toBeGreaterThan(0);
+
+      // Should include relations where John Smith is the 'from' entity
+      expect(
+        results.relations.some(
+          (relation) =>
+            relation.from === "John Smith" &&
+            relation.to === "Acme Corporation" &&
+            relation.relationType === "works at"
+        )
+      ).toBe(true);
+
+      // Should include relations where John Smith is the 'to' entity
+      // (In our test data, there are no such relations, but the logic should be tested)
+      // If we had such relations, we would test them here
     });
 
     it("should find entities by type", async () => {
@@ -431,9 +458,9 @@ describe("LowDBFuseKnowledgeGraphManager", () => {
       const results = await manager.searchNodes("Organization");
 
       // Verify results
-      expect(results.length).toBeGreaterThan(0);
+      expect(results.entities.length).toBeGreaterThan(0);
       expect(
-        results.some((entity) => entity.entityType === "Organization")
+        results.entities.some((entity) => entity.entityType === "Organization")
       ).toBe(true);
     });
 
@@ -445,9 +472,9 @@ describe("LowDBFuseKnowledgeGraphManager", () => {
       const results = await manager.searchNodes("TypeScript");
 
       // Verify results
-      expect(results.length).toBeGreaterThan(0);
+      expect(results.entities.length).toBeGreaterThan(0);
       expect(
-        results.some((entity) =>
+        results.entities.some((entity) =>
           entity.observations.some((obs) => obs.includes("TypeScript"))
         )
       ).toBe(true);
@@ -459,7 +486,7 @@ describe("LowDBFuseKnowledgeGraphManager", () => {
 
       // Search with no matches
       const results = await manager.searchNodes("Non-existing Term");
-      expect(results).toHaveLength(0);
+      expect(results.entities).toHaveLength(0);
     });
 
     it("should return empty array for empty query", async () => {
@@ -468,7 +495,7 @@ describe("LowDBFuseKnowledgeGraphManager", () => {
 
       // Search with empty query
       const results = await manager.searchNodes("");
-      expect(results).toHaveLength(0);
+      expect(results.entities).toHaveLength(0);
     });
 
     it("should find entities by multiple keywords", async () => {
@@ -479,11 +506,15 @@ describe("LowDBFuseKnowledgeGraphManager", () => {
       const results = await manager.searchNodes("TypeScript React");
 
       // Verify results
-      expect(results.length).toBeGreaterThan(0);
-      expect(results.some((entity) => entity.name === "John Smith")).toBe(true);
+      expect(results.entities.length).toBeGreaterThan(0);
+      expect(
+        results.entities.some((entity) => entity.name === "John Smith")
+      ).toBe(true);
 
       // Verify the entity has observations containing both keywords
-      const johnSmith = results.find((entity) => entity.name === "John Smith");
+      const johnSmith = results.entities.find(
+        (entity) => entity.name === "John Smith"
+      );
       expect(johnSmith).toBeDefined();
       expect(
         johnSmith!.observations.some(
@@ -500,12 +531,47 @@ describe("LowDBFuseKnowledgeGraphManager", () => {
 
       // Retrieve by name
       const results = await manager.openNodes(["John Smith"]);
-      expect(results).toHaveLength(1);
-      expect(results[0].name).toBe("John Smith");
-      expect(results[0].entityType).toBe("Person");
+      expect(results.entities).toHaveLength(1);
+      expect(results.entities[0].name).toBe("John Smith");
+      expect(results.entities[0].entityType).toBe("Person");
 
       // Verify observations
-      expect(results[0].observations.length).toBeGreaterThan(0);
+      expect(results.entities[0].observations.length).toBeGreaterThan(0);
+    });
+
+    it("should return relations involving opened entities", async () => {
+      // Create entities and relations
+      await manager.createEntities(testEntities);
+      await manager.createRelations(testRelations);
+
+      // Open specific entity
+      const results = await manager.openNodes(["John Smith"]);
+
+      // Verify relations
+      expect(results.relations.length).toBeGreaterThan(0);
+
+      // Should include relations where John Smith is the 'from' entity
+      expect(
+        results.relations.some(
+          (relation) =>
+            relation.from === "John Smith" &&
+            relation.to === "Acme Corporation" &&
+            relation.relationType === "works at"
+        )
+      ).toBe(true);
+
+      expect(
+        results.relations.some(
+          (relation) =>
+            relation.from === "John Smith" &&
+            relation.to === "Knowledge Graph Project" &&
+            relation.relationType === "leads"
+        )
+      ).toBe(true);
+
+      // Should include relations where John Smith is the 'to' entity
+      // (In our test data, there are no such relations, but the logic should be tested)
+      // If we had such relations, we would test them here
     });
 
     it("should retrieve multiple entities", async () => {
@@ -517,9 +583,9 @@ describe("LowDBFuseKnowledgeGraphManager", () => {
         "John Smith",
         "Acme Corporation",
       ]);
-      expect(results).toHaveLength(2);
-      expect(results.map((e) => e.name)).toContain("John Smith");
-      expect(results.map((e) => e.name)).toContain("Acme Corporation");
+      expect(results.entities).toHaveLength(2);
+      expect(results.entities.map((e) => e.name)).toContain("John Smith");
+      expect(results.entities.map((e) => e.name)).toContain("Acme Corporation");
     });
 
     it("should return empty array for non-existing entities", async () => {
@@ -528,7 +594,7 @@ describe("LowDBFuseKnowledgeGraphManager", () => {
 
       // Retrieve non-existing entity
       const results = await manager.openNodes(["Non-existing Entity"]);
-      expect(results).toHaveLength(0);
+      expect(results.entities).toHaveLength(0);
     });
 
     it("should return only existing entities from a mixed list", async () => {
@@ -540,8 +606,8 @@ describe("LowDBFuseKnowledgeGraphManager", () => {
         "John Smith",
         "Non-existing Entity",
       ]);
-      expect(results).toHaveLength(1);
-      expect(results[0].name).toBe("John Smith");
+      expect(results.entities).toHaveLength(1);
+      expect(results.entities[0].name).toBe("John Smith");
     });
   });
 
