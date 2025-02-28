@@ -11,12 +11,9 @@ import { JSONFile } from "lowdb/node";
 import Fuse from "fuse.js";
 
 /**
- * LowDBのデータ型定義
+ * Type definition for LowDB data
  */
-type LowDBData = {
-  entities: Entity[];
-  relations: Relation[];
-};
+type LowDBData = KnowledgeGraph;
 
 /**
  * An implementation of the KnowledgeGraphManagerInterface that uses LowDB and Fuse.js
@@ -29,46 +26,46 @@ export class LowDBFuseKnowledgeGraphManager
   private initialized: boolean = false;
 
   /**
-   * コンストラクタ
-   * @param dbPath データベースファイルのパス（デフォルトは./knowledge-graph.json）
+   * Constructor
+   * @param dbPath Path to the database file (default is ./knowledge-graph.json)
    */
   constructor(dbPath: string = join(process.cwd(), "knowledge-graph.json")) {
-    // LowDBの初期化
+    // Initialize LowDB
     const adapter = new JSONFile<LowDBData>(dbPath);
     this.db = new Low<LowDBData>(adapter, { entities: [], relations: [] });
 
-    // Fuse.jsの初期化（空の状態で初期化し、後でデータをロードする）
+    // Initialize Fuse.js (start with empty collection, data will be loaded later)
     this.fuse = new Fuse<Entity>([], {
       keys: ["name", "entityType", "observations"],
       includeScore: true,
-      threshold: 0.4, // 検索の厳密さ（0に近いほど厳密）
+      threshold: 0.4, // Search strictness (closer to 0 means more strict)
     });
   }
 
   /**
-   * データベースの初期化
+   * Initialize the database
    * @private
    */
   private async initialize(): Promise<void> {
     if (this.initialized) return;
 
     try {
-      // データベースの読み込み
+      // Load database
       await this.db.read();
 
-      // データベースが空の場合は初期化
+      // Initialize with empty data if database is empty
       if (this.db.data === null) {
         this.db.data = { entities: [], relations: [] };
         await this.db.write();
       }
 
-      // Fuse.jsのインデックスを構築
+      // Build Fuse.js search index
       this.fuse.setCollection(this.db.data.entities);
 
       this.initialized = true;
     } catch (error) {
       console.error("Failed to initialize database:", error);
-      // 初期化に失敗した場合は空のデータで初期化
+      // Initialize with empty data if initialization fails
       this.db.data = { entities: [], relations: [] };
       this.fuse.setCollection([]);
       this.initialized = true;
@@ -76,32 +73,32 @@ export class LowDBFuseKnowledgeGraphManager
   }
 
   /**
-   * データベースを保存する
+   * Save the database
    * @private
    */
   private async saveDatabase(): Promise<void> {
     await this.db.write();
-    // 検索インデックスを更新
+    // Update search index
     this.fuse.setCollection(this.db.data!.entities);
   }
 
   /**
-   * エンティティを作成する
-   * @param entities 作成するエンティティの配列
-   * @returns 作成されたエンティティの配列
+   * Create entities
+   * @param entities Array of entities to create
+   * @returns Array of created entities
    */
   async createEntities(entities: Entity[]): Promise<Entity[]> {
     await this.initialize();
 
-    // 既存のエンティティ名を取得
+    // Get existing entity names
     const existingNames = new Set(this.db.data!.entities.map((e) => e.name));
 
-    // 新しいエンティティをフィルタリング（既存のものは除外）
+    // Filter out entities that already exist
     const newEntities = entities.filter(
       (entity) => !existingNames.has(entity.name)
     );
 
-    // 新しいエンティティを追加
+    // Add new entities
     if (newEntities.length > 0) {
       this.db.data!.entities.push(...newEntities);
       await this.saveDatabase();
@@ -111,23 +108,23 @@ export class LowDBFuseKnowledgeGraphManager
   }
 
   /**
-   * リレーションを作成する
-   * @param relations 作成するリレーションの配列
-   * @returns 作成されたリレーションの配列
+   * Create relations
+   * @param relations Array of relations to create
+   * @returns Array of created relations
    */
   async createRelations(relations: Relation[]): Promise<Relation[]> {
     await this.initialize();
 
-    // エンティティ名のセットを作成
+    // Create a set of entity names
     const entityNames = new Set(this.db.data!.entities.map((e) => e.name));
 
-    // 有効なリレーションをフィルタリング（fromとtoの両方が存在するもの）
+    // Filter valid relations (both 'from' and 'to' entities must exist)
     const validRelations = relations.filter(
       (relation) =>
         entityNames.has(relation.from) && entityNames.has(relation.to)
     );
 
-    // 既存のリレーションと重複しないものをフィルタリング
+    // Filter out relations that already exist
     const existingRelations = this.db.data!.relations;
     const newRelations = validRelations.filter(
       (newRel) =>
@@ -139,7 +136,7 @@ export class LowDBFuseKnowledgeGraphManager
         )
     );
 
-    // 新しいリレーションを追加
+    // Add new relations
     if (newRelations.length > 0) {
       this.db.data!.relations.push(...newRelations);
       await this.saveDatabase();
@@ -149,9 +146,9 @@ export class LowDBFuseKnowledgeGraphManager
   }
 
   /**
-   * 観察を追加する
-   * @param observations 追加する観察の配列
-   * @returns 追加された観察の配列
+   * Add observations to entities
+   * @param observations Array of observations to add
+   * @returns Array of added observations
    */
   async addObservations(
     observations: Array<Observation>
@@ -160,19 +157,19 @@ export class LowDBFuseKnowledgeGraphManager
 
     const addedObservations: Observation[] = [];
 
-    // 各観察に対して処理
+    // Process each observation
     for (const observation of observations) {
-      // エンティティを検索
+      // Find the entity
       const entityIndex = this.db.data!.entities.findIndex(
         (e) => e.name === observation.entityName
       );
 
-      // エンティティが存在する場合
+      // If entity exists
       if (entityIndex !== -1) {
         const entity = this.db.data!.entities[entityIndex];
         const existingObservations = new Set(entity.observations);
 
-        // 新しい観察のみを追加
+        // Add only new observations (avoid duplicates)
         const newContents = observation.contents.filter(
           (content) => !existingObservations.has(content)
         );
@@ -187,7 +184,7 @@ export class LowDBFuseKnowledgeGraphManager
       }
     }
 
-    // 変更があれば保存
+    // Save if changes were made
     if (addedObservations.length > 0) {
       await this.saveDatabase();
     }
@@ -196,20 +193,20 @@ export class LowDBFuseKnowledgeGraphManager
   }
 
   /**
-   * エンティティを削除する
-   * @param entityNames 削除するエンティティ名の配列
+   * Delete entities
+   * @param entityNames Array of entity names to delete
    */
   async deleteEntities(entityNames: string[]): Promise<void> {
     await this.initialize();
 
     const nameSet = new Set(entityNames);
 
-    // エンティティを削除
+    // Delete entities
     this.db.data!.entities = this.db.data!.entities.filter(
       (entity) => !nameSet.has(entity.name)
     );
 
-    // 関連するリレーションも削除
+    // Delete related relations
     this.db.data!.relations = this.db.data!.relations.filter(
       (relation) => !nameSet.has(relation.from) && !nameSet.has(relation.to)
     );
@@ -218,55 +215,55 @@ export class LowDBFuseKnowledgeGraphManager
   }
 
   /**
-   * 観察を削除する
-   * @param deletions 削除する観察の配列
+   * Delete observations from entities
+   * @param deletions Array of observations to delete
    */
   async deleteObservations(deletions: Array<Observation>): Promise<void> {
     await this.initialize();
 
     let hasChanges = false;
 
-    // 各削除対象に対して処理
+    // Process each deletion
     for (const deletion of deletions) {
-      // エンティティを検索
+      // Find the entity
       const entityIndex = this.db.data!.entities.findIndex(
         (e) => e.name === deletion.entityName
       );
 
-      // エンティティが存在する場合
+      // If entity exists
       if (entityIndex !== -1) {
         const entity = this.db.data!.entities[entityIndex];
         const deleteSet = new Set(deletion.contents);
 
-        // 削除対象の観察を除外
+        // Remove specified observations
         const originalLength = entity.observations.length;
         entity.observations = entity.observations.filter(
           (obs) => !deleteSet.has(obs)
         );
 
-        // 変更があったかチェック
+        // Check if any changes were made
         if (originalLength !== entity.observations.length) {
           hasChanges = true;
         }
       }
     }
 
-    // 変更があれば保存
+    // Save if changes were made
     if (hasChanges) {
       await this.saveDatabase();
     }
   }
 
   /**
-   * リレーションを削除する
-   * @param relations 削除するリレーションの配列
+   * Delete relations
+   * @param relations Array of relations to delete
    */
   async deleteRelations(relations: Relation[]): Promise<void> {
     await this.initialize();
 
     const originalLength = this.db.data!.relations.length;
 
-    // 削除対象のリレーションを除外
+    // Remove specified relations
     this.db.data!.relations = this.db.data!.relations.filter(
       (existingRel) =>
         !relations.some(
@@ -277,15 +274,15 @@ export class LowDBFuseKnowledgeGraphManager
         )
     );
 
-    // 変更があれば保存
+    // Save if changes were made
     if (originalLength !== this.db.data!.relations.length) {
       await this.saveDatabase();
     }
   }
 
   /**
-   * ナレッジグラフ全体を読み取る
-   * @returns ナレッジグラフ
+   * Read the entire knowledge graph
+   * @returns Knowledge graph
    */
   async readGraph(): Promise<KnowledgeGraph> {
     await this.initialize();
@@ -297,9 +294,9 @@ export class LowDBFuseKnowledgeGraphManager
   }
 
   /**
-   * エンティティを検索する
-   * @param query 検索クエリ
-   * @returns 検索結果のエンティティ配列
+   * Search for entities
+   * @param query Search query
+   * @returns Array of matching entities
    */
   async searchNodes(query: string): Promise<Entity[]> {
     await this.initialize();
@@ -308,10 +305,10 @@ export class LowDBFuseKnowledgeGraphManager
       return [];
     }
 
-    // Fuse.jsで検索を実行
+    // Execute search with Fuse.js
     const results = this.fuse.search(query);
 
-    // 検索結果からエンティティを抽出（重複を排除）
+    // Extract entities from search results (remove duplicates)
     const uniqueEntities = new Map<string, Entity>();
     for (const result of results) {
       if (!uniqueEntities.has(result.item.name)) {
@@ -323,16 +320,16 @@ export class LowDBFuseKnowledgeGraphManager
   }
 
   /**
-   * 指定した名前のエンティティを取得する
-   * @param names エンティティ名の配列
-   * @returns 取得したエンティティの配列
+   * Get entities by name
+   * @param names Array of entity names
+   * @returns Array of matching entities
    */
   async openNodes(names: string[]): Promise<Entity[]> {
     await this.initialize();
 
     const nameSet = new Set(names);
 
-    // 指定された名前のエンティティをフィルタリング
+    // Filter entities by name
     return this.db.data!.entities.filter((entity) => nameSet.has(entity.name));
   }
 }
