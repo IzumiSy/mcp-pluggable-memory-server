@@ -5,7 +5,6 @@ import {
   Observation,
   KnowledgeGraph,
 } from "../types";
-import { join } from "path";
 import { Low } from "lowdb";
 import { JSONFile } from "lowdb/node";
 import Fuse from "fuse.js";
