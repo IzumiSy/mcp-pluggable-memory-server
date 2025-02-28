@@ -7,6 +7,7 @@ import {
 import { toolsSchema } from "./toolsSchema";
 import { NullKnowledgeGraphManager } from "./adapters/null";
 import { Entity, Observation, Relation } from "./types";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
 const server = new Server(
   {
@@ -145,4 +146,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
+});
+
+async function main() {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error("Pluggable Knowledge Graph MCP Server running on stdio");
+}
+
+main().catch((error) => {
+  console.error("Fatal error in main():", error);
+  process.exit(1);
 });
