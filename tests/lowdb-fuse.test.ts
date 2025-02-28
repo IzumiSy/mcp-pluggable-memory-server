@@ -470,6 +470,27 @@ describe("LowDBFuseKnowledgeGraphManager", () => {
       const results = await manager.searchNodes("");
       expect(results).toHaveLength(0);
     });
+
+    it("should find entities by multiple keywords", async () => {
+      // Create entities
+      await manager.createEntities(testEntities);
+
+      // Search by multiple keywords
+      const results = await manager.searchNodes("TypeScript React");
+
+      // Verify results
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.some((entity) => entity.name === "John Smith")).toBe(true);
+
+      // Verify the entity has observations containing both keywords
+      const johnSmith = results.find((entity) => entity.name === "John Smith");
+      expect(johnSmith).toBeDefined();
+      expect(
+        johnSmith!.observations.some(
+          (obs) => obs.includes("TypeScript") && obs.includes("React")
+        )
+      ).toBe(true);
+    });
   });
 
   describe("openNodes", () => {
