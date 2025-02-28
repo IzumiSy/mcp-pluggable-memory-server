@@ -12,42 +12,41 @@ import {
 export class NullKnowledgeGraphManager
   implements KnowledgeGraphManagerInterface
 {
-  createEntities(entities: Entity[]): Promise<Entity[]> {
+  createEntities(entities: Entity[]) {
     return Promise.resolve(entities);
   }
 
-  createRelations(relations: Relation[]): Promise<Relation[]> {
+  createRelations(relations: Relation[]) {
     return Promise.resolve(relations);
   }
 
-  addObservations(observations: Array<Observation>): Promise<Observation[]> {
+  addObservations(observations: Array<Observation>) {
     return Promise.resolve(observations);
   }
 
-  deleteEntities(entityNames: string[]): Promise<void> {
+  deleteEntities(entityNames: string[]) {
     return Promise.resolve();
   }
 
-  deleteObservations(deletions: Array<Observation>): Promise<void> {
+  deleteObservations(deletions: Array<Observation>) {
     return Promise.resolve();
   }
 
-  deleteRelations(relations: Relation[]): Promise<void> {
+  deleteRelations(relations: Relation[]) {
     return Promise.resolve();
   }
 
-  readGraph(): Promise<KnowledgeGraph> {
+  searchNodes(query: string) {
     return Promise.resolve({
       entities: [],
       relations: [],
     });
   }
 
-  searchNodes(query: string): Promise<Entity[]> {
-    return Promise.resolve([]);
-  }
-
-  openNodes(names: string[]): Promise<Entity[]> {
-    return Promise.resolve([]);
+  openNodes(names: string[]) {
+    return Promise.resolve({
+      entities: [],
+      relations: [],
+    });
   }
 }

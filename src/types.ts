@@ -44,7 +44,6 @@ export type KnowledgeGraphManagerInterface = {
   deleteEntities(entityNames: string[]): Promise<void>;
   deleteObservations(deletions: Array<Observation>): Promise<void>;
   deleteRelations(relations: Relation[]): Promise<void>;
-  readGraph(): Promise<KnowledgeGraph>;
-  searchNodes(query: string): Promise<Entity[]>;
-  openNodes(names: string[]): Promise<Entity[]>;
+  searchNodes(query: string): Promise<KnowledgeGraph>;
+  openNodes(names: string[]): Promise<KnowledgeGraph>;
 };
