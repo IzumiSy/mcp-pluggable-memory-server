@@ -5,53 +5,107 @@ import { join } from "path";
 import { existsSync, unlinkSync } from "fs";
 
 describe("LowDBFuseKnowledgeGraphManager", () => {
-  // テスト用の一時ファイルパス
+  // Test file path
   const testDbPath = join(process.cwd(), "test-knowledge-graph.json");
   let manager: LowDBFuseKnowledgeGraphManager;
 
-  // テストデータ
+  // More realistic test data
   const testEntities: Entity[] = [
     {
-      name: "Entity1",
-      entityType: "TestType",
-      observations: ["Observation1", "Observation2"],
+      name: "John Smith",
+      entityType: "Person",
+      observations: [
+        "Software engineer with 8 years of experience",
+        "Specializes in TypeScript and React",
+        "Works at Acme Corporation since 2020",
+      ],
     },
     {
-      name: "Entity2",
-      entityType: "TestType",
-      observations: ["Observation3"],
+      name: "Acme Corporation",
+      entityType: "Organization",
+      observations: [
+        "Technology company founded in 2015",
+        "Headquartered in San Francisco",
+        "Specializes in enterprise software solutions",
+      ],
+    },
+    {
+      name: "Knowledge Graph Project",
+      entityType: "Project",
+      observations: [
+        "Started in January 2025",
+        "Aims to create a knowledge management system",
+        "Implemented using TypeScript and Node.js",
+      ],
+    },
+    {
+      name: "GraphQL",
+      entityType: "Technology",
+      observations: [
+        "API query language developed by Facebook",
+        "Enables efficient data retrieval",
+        "Popular in modern web applications",
+      ],
     },
   ];
 
-  // テスト用のモックデータを作成する関数
+  // Function to create test data
   const createTestData = async () => {
     await manager.createEntities(testEntities);
+    await manager.createRelations(testRelations);
   };
 
+  // More realistic relations
   const testRelations: Relation[] = [
     {
-      from: "Entity1",
-      to: "Entity2",
-      relationType: "TestRelation",
+      from: "John Smith",
+      to: "Acme Corporation",
+      relationType: "works at",
+    },
+    {
+      from: "John Smith",
+      to: "Knowledge Graph Project",
+      relationType: "leads",
+    },
+    {
+      from: "Acme Corporation",
+      to: "Knowledge Graph Project",
+      relationType: "sponsors",
+    },
+    {
+      from: "Knowledge Graph Project",
+      to: "GraphQL",
+      relationType: "uses",
     },
   ];
 
+  // More realistic observations
   const testObservations: Observation[] = [
     {
-      entityName: "Entity1",
-      contents: ["Observation4", "Observation5"],
+      entityName: "John Smith",
+      contents: [
+        "Recently completed advanced GraphQL certification",
+        "Has 3 years of team leadership experience",
+      ],
+    },
+    {
+      entityName: "Knowledge Graph Project",
+      contents: [
+        "Phase one scheduled for completion in March 2025",
+        "Main goal is to visualize data relationships",
+      ],
     },
   ];
 
-  // 各テスト前に実行
+  // Run before each test
   beforeEach(() => {
-    // テスト用のマネージャーを作成
+    // Create test manager
     manager = new LowDBFuseKnowledgeGraphManager(testDbPath);
   });
 
-  // 各テスト後に実行
+  // Run after each test
   afterEach(() => {
-    // テスト用のファイルを削除
+    // Delete test file
     if (existsSync(testDbPath)) {
       unlinkSync(testDbPath);
     }
@@ -60,147 +114,156 @@ describe("LowDBFuseKnowledgeGraphManager", () => {
   describe("createEntities", () => {
     it("should create new entities", async () => {
       const result = await manager.createEntities(testEntities);
-      expect(result).toHaveLength(2);
-      expect(result[0].name).toBe("Entity1");
-      expect(result[1].name).toBe("Entity2");
+      expect(result).toHaveLength(4);
+      expect(result[0].name).toBe("John Smith");
+      expect(result[1].name).toBe("Acme Corporation");
 
-      // グラフを読み取って確認
+      // Verify graph
       const graph = await manager.readGraph();
-      expect(graph.entities).toHaveLength(2);
-      expect(graph.entities[0].name).toBe("Entity1");
-      expect(graph.entities[1].name).toBe("Entity2");
+      expect(graph.entities).toHaveLength(4);
+      expect(graph.entities[0].name).toBe("John Smith");
+      expect(graph.entities[1].name).toBe("Acme Corporation");
     });
 
     it("should not create duplicate entities", async () => {
-      // 最初のエンティティを作成
+      // Create first entity
       await manager.createEntities([testEntities[0]]);
 
-      // 同じエンティティを含む配列で再度作成を試みる
+      // Try to create entities including the existing one
       const result = await manager.createEntities(testEntities);
 
-      // 重複しないエンティティのみ作成されるはず
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe("Entity2");
+      // Only non-duplicate entities should be created
+      expect(result).toHaveLength(3);
+      expect(result.map((e) => e.name)).not.toContain("John Smith");
 
-      // グラフを読み取って確認
+      // Verify graph
       const graph = await manager.readGraph();
-      expect(graph.entities).toHaveLength(2);
+      expect(graph.entities).toHaveLength(4);
     });
   });
 
   describe("createRelations", () => {
     it("should create relations between existing entities", async () => {
-      // エンティティを作成
+      // Create entities
       await manager.createEntities(testEntities);
 
-      // リレーションを作成
+      // Create relations
       const result = await manager.createRelations(testRelations);
-      expect(result).toHaveLength(1);
-      expect(result[0].from).toBe("Entity1");
-      expect(result[0].to).toBe("Entity2");
+      expect(result).toHaveLength(4);
+      expect(result[0].from).toBe("John Smith");
+      expect(result[0].to).toBe("Acme Corporation");
 
-      // グラフを読み取って確認
+      // Verify graph
       const graph = await manager.readGraph();
-      expect(graph.relations).toHaveLength(1);
-      expect(graph.relations[0].from).toBe("Entity1");
-      expect(graph.relations[0].to).toBe("Entity2");
+      expect(graph.relations).toHaveLength(4);
+      expect(graph.relations[0].from).toBe("John Smith");
+      expect(graph.relations[0].to).toBe("Acme Corporation");
     });
 
     it("should not create relations for non-existing entities", async () => {
-      // エンティティを作成せずにリレーションを作成しようとする
+      // Try to create relations without creating entities
       const result = await manager.createRelations(testRelations);
 
-      // 存在しないエンティティ間のリレーションは作成されないはず
+      // No relations should be created
       expect(result).toHaveLength(0);
 
-      // グラフを読み取って確認
+      // Verify graph
       const graph = await manager.readGraph();
       expect(graph.relations).toHaveLength(0);
     });
 
     it("should not create duplicate relations", async () => {
-      // エンティティを作成
+      // Create entities
       await manager.createEntities(testEntities);
 
-      // リレーションを作成
+      // Create relations
       await manager.createRelations(testRelations);
 
-      // 同じリレーションを再度作成しようとする
+      // Try to create the same relations again
       const result = await manager.createRelations(testRelations);
 
-      // 重複するリレーションは作成されないはず
+      // No duplicate relations should be created
       expect(result).toHaveLength(0);
 
-      // グラフを読み取って確認
+      // Verify graph
       const graph = await manager.readGraph();
-      expect(graph.relations).toHaveLength(1);
+      expect(graph.relations).toHaveLength(4);
     });
   });
 
   describe("addObservations", () => {
     it("should add observations to existing entities", async () => {
-      // エンティティを作成
+      // Create entities
       await manager.createEntities(testEntities);
 
-      // 観察を追加
+      // Add observations
       const result = await manager.addObservations(testObservations);
-      expect(result).toHaveLength(1);
-      expect(result[0].entityName).toBe("Entity1");
+      expect(result).toHaveLength(2);
+      expect(result[0].entityName).toBe("John Smith");
       expect(result[0].contents).toHaveLength(2);
-      expect(result[0].contents).toContain("Observation4");
-      expect(result[0].contents).toContain("Observation5");
+      expect(result[0].contents).toContain(
+        "Recently completed advanced GraphQL certification"
+      );
 
-      // グラフを読み取って確認
+      // Verify graph
       const graph = await manager.readGraph();
-      const entity = graph.entities.find((e) => e.name === "Entity1");
+      const entity = graph.entities.find((e) => e.name === "John Smith");
       expect(entity).toBeDefined();
-      expect(entity!.observations).toHaveLength(4); // 元の2つ + 新しい2つ
-      expect(entity!.observations).toContain("Observation1");
-      expect(entity!.observations).toContain("Observation2");
-      expect(entity!.observations).toContain("Observation4");
-      expect(entity!.observations).toContain("Observation5");
+      expect(entity!.observations).toHaveLength(5); // Original 3 + new 2
+      expect(entity!.observations).toContain(
+        "Software engineer with 8 years of experience"
+      );
+      expect(entity!.observations).toContain(
+        "Recently completed advanced GraphQL certification"
+      );
     });
 
     it("should not add duplicate observations", async () => {
-      // エンティティを作成
+      // Create entities
       await manager.createEntities(testEntities);
 
-      // 重複する観察を含む配列を作成
+      // Create observations with duplicates
       const duplicateObservations: Observation[] = [
         {
-          entityName: "Entity1",
-          contents: ["Observation1", "Observation4"], // Observation1は既に存在する
+          entityName: "John Smith",
+          contents: [
+            "Software engineer with 8 years of experience", // Already exists
+            "Active contributor to open source projects", // New observation
+          ],
         },
       ];
 
-      // 観察を追加
+      // Add observations
       const result = await manager.addObservations(duplicateObservations);
 
-      // グラフを読み取って確認
+      // Verify graph
       const graph = await manager.readGraph();
-      const entity = graph.entities.find((e) => e.name === "Entity1");
+      const entity = graph.entities.find((e) => e.name === "John Smith");
       expect(entity).toBeDefined();
 
-      // 観察が追加されているか確認
-      expect(entity!.observations).toContain("Observation1");
-      expect(entity!.observations).toContain("Observation2");
-      expect(entity!.observations).toContain("Observation4");
+      // Verify observations
+      expect(entity!.observations).toContain(
+        "Software engineer with 8 years of experience"
+      );
+      expect(entity!.observations).toContain(
+        "Active contributor to open source projects"
+      );
     });
 
     it("should ignore observations for non-existing entities", async () => {
-      // 存在しないエンティティに対する観察
+      // Observations for non-existing entity
       const nonExistingObservations: Observation[] = [
         {
-          entityName: "NonExistingEntity",
-          contents: ["Observation1"],
+          entityName: "Non-existing Entity",
+          contents: ["Some observation"],
         },
       ];
 
-      // 観察を追加
+      // Add observations
       const result = await manager.addObservations(nonExistingObservations);
       expect(result).toHaveLength(0);
 
-      // グラフを読み取って確認
+      // Verify graph
       const graph = await manager.readGraph();
       expect(graph.entities).toHaveLength(0);
     });
@@ -208,120 +271,139 @@ describe("LowDBFuseKnowledgeGraphManager", () => {
 
   describe("deleteObservations", () => {
     it("should delete observations from entities", async () => {
-      // エンティティを作成
+      // Create entities
       await createTestData();
 
-      // 削除する観察
+      // Observations to delete
       const deletions: Observation[] = [
         {
-          entityName: "Entity1",
-          contents: ["Observation1"],
+          entityName: "John Smith",
+          contents: ["Software engineer with 8 years of experience"],
         },
       ];
 
-      // 観察を削除
+      // Delete observations
       await manager.deleteObservations(deletions);
 
-      // グラフを読み取って確認
+      // Verify graph
       const graph = await manager.readGraph();
-      const entity = graph.entities.find((e) => e.name === "Entity1");
+      const entity = graph.entities.find((e) => e.name === "John Smith");
       expect(entity).toBeDefined();
 
-      // 元の観察配列から削除されたか確認
-      expect(entity!.observations).not.toContain("Observation1");
-      expect(entity!.observations).toContain("Observation2");
+      // Verify observations were deleted
+      expect(entity!.observations).not.toContain(
+        "Software engineer with 8 years of experience"
+      );
+      expect(entity!.observations).toContain(
+        "Specializes in TypeScript and React"
+      );
     });
 
     it("should handle non-existing entities gracefully", async () => {
-      // 存在しないエンティティからの観察削除
+      // Delete observations from non-existing entity
       const deletions: Observation[] = [
         {
-          entityName: "NonExistingEntity",
-          contents: ["Observation1"],
+          entityName: "Non-existing Entity",
+          contents: ["Some observation"],
         },
       ];
 
-      // エラーが発生しないことを確認
+      // Should not throw error
       await expect(
         manager.deleteObservations(deletions)
       ).resolves.not.toThrow();
     });
 
     it("should handle non-existing observations gracefully", async () => {
-      // エンティティを作成
+      // Create entities
       await manager.createEntities(testEntities);
 
-      // 存在しない観察の削除
+      // Delete non-existing observations
       const deletions: Observation[] = [
         {
-          entityName: "Entity1",
-          contents: ["NonExistingObservation"],
+          entityName: "John Smith",
+          contents: ["Non-existing observation content"],
         },
       ];
 
-      // 観察を削除
+      // Delete observations
       await manager.deleteObservations(deletions);
 
-      // グラフを読み取って確認（変更なし）
+      // Verify graph
       const graph = await manager.readGraph();
-      const entity = graph.entities.find((e) => e.name === "Entity1");
+      const entity = graph.entities.find((e) => e.name === "John Smith");
       expect(entity).toBeDefined();
 
-      // 観察が存在するか確認
+      // Verify observations still exist
       expect(entity!.observations.length).toBeGreaterThan(0);
     });
   });
 
   describe("deleteEntities", () => {
     it("should delete entities and their relations", async () => {
-      // エンティティとリレーションを作成
+      // Create entities and relations
       await manager.createEntities(testEntities);
       await manager.createRelations(testRelations);
 
-      // Entity1を削除
-      await manager.deleteEntities(["Entity1"]);
+      // Delete John Smith entity
+      await manager.deleteEntities(["John Smith"]);
 
-      // グラフを読み取って確認
+      // Verify graph
       const graph = await manager.readGraph();
-      expect(graph.entities).toHaveLength(1); // Entity2のみ残る
-      expect(graph.entities[0].name).toBe("Entity2");
-      expect(graph.relations).toHaveLength(0); // リレーションも削除される
+      expect(graph.entities).toHaveLength(3); // Only 3 entities remain (John Smith is deleted)
+      expect(graph.entities.map((e) => e.name)).not.toContain("John Smith");
+      expect(graph.entities.map((e) => e.name)).toContain("Acme Corporation");
+
+      // Relations involving John Smith should be deleted
+      expect(
+        graph.relations.some(
+          (r) => r.from === "John Smith" || r.to === "John Smith"
+        )
+      ).toBe(false);
     });
 
     it("should handle non-existing entities gracefully", async () => {
-      // 存在しないエンティティの削除
+      // Delete non-existing entity
       await expect(
-        manager.deleteEntities(["NonExistingEntity"])
+        manager.deleteEntities(["Non-existing Entity"])
       ).resolves.not.toThrow();
     });
   });
 
   describe("deleteRelations", () => {
     it("should delete specific relations", async () => {
-      // エンティティとリレーションを作成
+      // Create entities and relations
       await manager.createEntities(testEntities);
       await manager.createRelations(testRelations);
 
-      // リレーションを削除
-      await manager.deleteRelations(testRelations);
+      // Delete one relation
+      await manager.deleteRelations([testRelations[0]]);
 
-      // グラフを読み取って確認
+      // Verify graph
       const graph = await manager.readGraph();
-      expect(graph.entities).toHaveLength(2); // エンティティは残る
-      expect(graph.relations).toHaveLength(0); // リレーションは削除される
+      expect(graph.entities).toHaveLength(4); // All entities remain
+      expect(graph.relations).toHaveLength(3); // One relation is deleted
+      expect(
+        graph.relations.some(
+          (r) =>
+            r.from === "John Smith" &&
+            r.to === "Acme Corporation" &&
+            r.relationType === "works at"
+        )
+      ).toBe(false);
     });
 
     it("should handle non-existing relations gracefully", async () => {
-      // 存在しないリレーションの削除
+      // Delete non-existing relations
       const nonExistingRelations: Relation[] = [
         {
-          from: "NonExistingEntity1",
-          to: "NonExistingEntity2",
-          relationType: "NonExistingRelation",
+          from: "Non-existing Person",
+          to: "Non-existing Organization",
+          relationType: "works at",
         },
       ];
 
-      // エラーが発生しないことを確認
+      // Should not throw error
       await expect(
         manager.deleteRelations(nonExistingRelations)
       ).resolves.not.toThrow();
@@ -330,53 +412,61 @@ describe("LowDBFuseKnowledgeGraphManager", () => {
 
   describe("searchNodes", () => {
     it("should find entities by name", async () => {
-      // エンティティを作成
+      // Create entities
       await createTestData();
 
-      // 名前で検索
-      const results = await manager.searchNodes("Entity1");
+      // Search by name
+      const results = await manager.searchNodes("John Smith");
 
-      // 検索結果を確認
+      // Verify results
       expect(results.length).toBeGreaterThan(0);
-      expect(results.some((entity) => entity.name === "Entity1")).toBe(true);
+      expect(results.some((entity) => entity.name === "John Smith")).toBe(true);
     });
 
     it("should find entities by type", async () => {
-      // エンティティを作成
+      // Create entities
       await manager.createEntities(testEntities);
 
-      // タイプで検索
-      const results = await manager.searchNodes("TestType");
-      expect(results).toHaveLength(2); // 両方のエンティティがTestType
+      // Search by entity type
+      const results = await manager.searchNodes("Organization");
+
+      // Verify results
+      expect(results.length).toBeGreaterThan(0);
+      expect(
+        results.some((entity) => entity.entityType === "Organization")
+      ).toBe(true);
     });
 
     it("should find entities by observation content", async () => {
-      // エンティティを作成
+      // Create entities
       await manager.createEntities(testEntities);
 
-      // 観察内容で検索
-      const results = await manager.searchNodes("Observation1");
+      // Search by observation content
+      const results = await manager.searchNodes("TypeScript");
 
-      // 検索結果を確認
+      // Verify results
       expect(results.length).toBeGreaterThan(0);
-      // 検索結果にEntity1が含まれているか確認
-      expect(results.some((entity) => entity.name === "Entity1")).toBe(true);
+      expect(
+        results.some((entity) =>
+          entity.observations.some((obs) => obs.includes("TypeScript"))
+        )
+      ).toBe(true);
     });
 
     it("should return empty array for no matches", async () => {
-      // エンティティを作成
+      // Create entities
       await manager.createEntities(testEntities);
 
-      // 一致しない検索
-      const results = await manager.searchNodes("NonExistingTerm");
+      // Search with no matches
+      const results = await manager.searchNodes("Non-existing Term");
       expect(results).toHaveLength(0);
     });
 
     it("should return empty array for empty query", async () => {
-      // エンティティを作成
+      // Create entities
       await manager.createEntities(testEntities);
 
-      // 空のクエリ
+      // Search with empty query
       const results = await manager.searchNodes("");
       expect(results).toHaveLength(0);
     });
@@ -384,68 +474,77 @@ describe("LowDBFuseKnowledgeGraphManager", () => {
 
   describe("openNodes", () => {
     it("should retrieve specific entities by name", async () => {
-      // エンティティを作成
+      // Create entities
       await manager.createEntities(testEntities);
 
-      // 名前で取得
-      const results = await manager.openNodes(["Entity1"]);
+      // Retrieve by name
+      const results = await manager.openNodes(["John Smith"]);
       expect(results).toHaveLength(1);
-      expect(results[0].name).toBe("Entity1");
-      expect(results[0].entityType).toBe("TestType");
+      expect(results[0].name).toBe("John Smith");
+      expect(results[0].entityType).toBe("Person");
 
-      // 観察が存在するか確認
+      // Verify observations
       expect(results[0].observations.length).toBeGreaterThan(0);
     });
 
     it("should retrieve multiple entities", async () => {
-      // エンティティを作成
+      // Create entities
       await manager.createEntities(testEntities);
 
-      // 複数のエンティティを取得
-      const results = await manager.openNodes(["Entity1", "Entity2"]);
+      // Retrieve multiple entities
+      const results = await manager.openNodes([
+        "John Smith",
+        "Acme Corporation",
+      ]);
       expect(results).toHaveLength(2);
-      expect(results.map((e) => e.name)).toContain("Entity1");
-      expect(results.map((e) => e.name)).toContain("Entity2");
+      expect(results.map((e) => e.name)).toContain("John Smith");
+      expect(results.map((e) => e.name)).toContain("Acme Corporation");
     });
 
     it("should return empty array for non-existing entities", async () => {
-      // エンティティを作成
+      // Create entities
       await manager.createEntities(testEntities);
 
-      // 存在しないエンティティを取得
-      const results = await manager.openNodes(["NonExistingEntity"]);
+      // Retrieve non-existing entity
+      const results = await manager.openNodes(["Non-existing Entity"]);
       expect(results).toHaveLength(0);
     });
 
     it("should return only existing entities from a mixed list", async () => {
-      // エンティティを作成
+      // Create entities
       await manager.createEntities(testEntities);
 
-      // 存在するエンティティと存在しないエンティティの混合リスト
-      const results = await manager.openNodes(["Entity1", "NonExistingEntity"]);
+      // Retrieve mixed list of existing and non-existing entities
+      const results = await manager.openNodes([
+        "John Smith",
+        "Non-existing Entity",
+      ]);
       expect(results).toHaveLength(1);
-      expect(results[0].name).toBe("Entity1");
+      expect(results[0].name).toBe("John Smith");
     });
   });
 
   describe("readGraph", () => {
     it("should return the entire knowledge graph", async () => {
-      // エンティティとリレーションを作成
+      // Create entities and relations
       await manager.createEntities(testEntities);
       await manager.createRelations(testRelations);
 
-      // グラフを読み取る
+      // Read graph
       const graph = await manager.readGraph();
-      expect(graph.entities).toHaveLength(2);
-      expect(graph.relations).toHaveLength(1);
-      expect(graph.entities[0].name).toBe("Entity1");
-      expect(graph.entities[1].name).toBe("Entity2");
-      expect(graph.relations[0].from).toBe("Entity1");
-      expect(graph.relations[0].to).toBe("Entity2");
+      expect(graph.entities).toHaveLength(4);
+      expect(graph.relations).toHaveLength(4);
+      expect(graph.entities.map((e) => e.name)).toContain("John Smith");
+      expect(graph.entities.map((e) => e.name)).toContain("Acme Corporation");
+      expect(
+        graph.relations.some(
+          (r) => r.from === "John Smith" && r.to === "Acme Corporation"
+        )
+      ).toBe(true);
     });
 
     it("should return empty graph when no data exists", async () => {
-      // 何も作成せずにグラフを読み取る
+      // Read empty graph
       const graph = await manager.readGraph();
       expect(graph.entities).toHaveLength(0);
       expect(graph.relations).toHaveLength(0);
