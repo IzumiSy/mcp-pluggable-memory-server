@@ -8,6 +8,9 @@ import { toolsSchema } from "./toolsSchema";
 import { LowDBFuseKnowledgeGraphManager } from "./adapters/lowdb-fuse";
 import { Entity, Observation, Relation } from "./types";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { join, dirname } from "path";
+import { homedir } from "os";
+import { existsSync, mkdirSync } from "fs";
 
 const server = new Server(
   {
@@ -27,7 +30,34 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   };
 });
 
-const knowledgeGraphManager = new LowDBFuseKnowledgeGraphManager();
+/**
+ * Get the database file path based on environment variables or default location
+ * @returns The path to the database file
+ */
+function getDbPath(): string {
+  if (process.env.MEMORY_FILE_PATH) {
+    // Use environment variable if provided
+    return process.env.MEMORY_FILE_PATH;
+  }
+
+  // Default path: ~/.local/share/pluggable-memory-server/knowledge-graph.json
+  const defaultDir = join(
+    homedir(),
+    ".local",
+    "share",
+    "pluggable-memory-server"
+  );
+  const defaultPath = join(defaultDir, "knowledge-graph.json");
+
+  // Create directory if it doesn't exist
+  if (!existsSync(dirname(defaultPath))) {
+    mkdirSync(dirname(defaultPath), { recursive: true });
+  }
+
+  return defaultPath;
+}
+
+const knowledgeGraphManager = new LowDBFuseKnowledgeGraphManager(getDbPath());
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;

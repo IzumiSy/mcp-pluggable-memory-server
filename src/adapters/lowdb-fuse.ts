@@ -27,9 +27,9 @@ export class LowDBFuseKnowledgeGraphManager
 
   /**
    * Constructor
-   * @param dbPath Path to the database file (default is ./knowledge-graph.json)
+   * @param dbPath Path to the database file
    */
-  constructor(dbPath: string = join(process.cwd(), "knowledge-graph.json")) {
+  constructor(dbPath: string) {
     // Initialize LowDB
     const adapter = new JSONFile<LowDBData>(dbPath);
     this.db = new Low<LowDBData>(adapter, { entities: [], relations: [] });
