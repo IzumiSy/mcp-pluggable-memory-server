@@ -5,7 +5,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { toolsSchema } from "./toolsSchema";
-import { NullKnowledgeGraphManager } from "./adapters/null";
+import { LowDBFuseKnowledgeGraphManager } from "./adapters/lowdb-fuse";
 import { Entity, Observation, Relation } from "./types";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
@@ -27,7 +27,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   };
 });
 
-const knowledgeGraphManager = new NullKnowledgeGraphManager();
+const knowledgeGraphManager = new LowDBFuseKnowledgeGraphManager();
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;

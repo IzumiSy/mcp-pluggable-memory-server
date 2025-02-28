@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "build": "tsup src/index.ts && shx chmod +x dist/index.js",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "bin": {
     "mcp-pluggable-memory-server": "dist/index.js"
@@ -23,13 +25,17 @@
   "author": "IzumiSy",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.6.0"
+    "@modelcontextprotocol/sdk": "^1.6.0",
+    "@types/lowdb": "^1.0.15",
+    "fuse.js": "^7.1.0",
+    "lowdb": "^7.0.1"
   },
   "devDependencies": {
     "@types/node": "^22.13.5",
     "prettier": "^3.5.2",
     "shx": "^0.3.4",
     "tsup": "^8.4.0",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7"
   }
 }
