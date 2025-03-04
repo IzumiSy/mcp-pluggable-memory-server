@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { LowDBFuseKnowledgeGraphManager } from "../src/adapters/lowdb-fuse";
+import { DuckDBKnowledgeGraphManager } from "../src/manager";
 import { Entity, Relation, Observation } from "../src/types";
 import { join } from "path";
 import { existsSync, unlinkSync } from "fs";
 
-describe("LowDBFuseKnowledgeGraphManager", () => {
+describe("DuckDBFuseKnowledgeGraphManager", () => {
   // Test file path
-  const testDbPath = join(process.cwd(), "test-knowledge-graph.json");
-  let manager: LowDBFuseKnowledgeGraphManager;
+  const testDbPath = join(process.cwd(), "tmp", "test-knowledge-graph.db");
+  let manager: DuckDBKnowledgeGraphManager;
 
   // More realistic test data
   const testEntities: Entity[] = [
@@ -100,7 +100,7 @@ describe("LowDBFuseKnowledgeGraphManager", () => {
   // Run before each test
   beforeEach(() => {
     // Create test manager
-    manager = new LowDBFuseKnowledgeGraphManager(testDbPath);
+    manager = new DuckDBKnowledgeGraphManager(testDbPath);
   });
 
   // Run after each test

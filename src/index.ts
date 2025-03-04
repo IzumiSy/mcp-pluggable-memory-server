@@ -5,13 +5,12 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { toolsSchema } from "./toolsSchema";
-import { DuckDBFuseKnowledgeGraphManager } from "./adapters/duckdb-fuse";
+import { DuckDBKnowledgeGraphManager } from "./manager";
 import { Entity, Observation, Relation } from "./types";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { join, dirname } from "path";
 import { homedir } from "os";
 import { existsSync, mkdirSync } from "fs";
-import { LowDBFuseKnowledgeGraphManager } from "./adapters/lowdb-fuse";
 
 const server = new Server(
   {
@@ -58,7 +57,7 @@ function getDbPath(): string {
   return defaultPath;
 }
 
-const knowledgeGraphManager = new LowDBFuseKnowledgeGraphManager(getDbPath());
+const knowledgeGraphManager = new DuckDBKnowledgeGraphManager(getDbPath());
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;

@@ -1,7 +1,7 @@
 {
-  "name": "@izumisy/mcp-pluggable-memory-server",
+  "name": "@izumisy/duckdb-memory-server",
   "version": "1.0.0",
-  "description": "MCP Pluggable Memory Server",
+  "description": "MCP Memory Server with DuckDB backend",
   "type": "module",
   "main": "index.js",
   "scripts": {
@@ -11,26 +11,24 @@
     "test:watch": "vitest"
   },
   "bin": {
-    "mcp-pluggable-memory-server": "dist/index.mjs"
+    "mcp-duckdb-memory-server": "dist/index.mjs"
   },
   "files": [
     "dist"
   ],
   "keywords": [
     "mcp",
-    "pluggable",
     "memory",
     "knowledge",
-    "graph"
+    "graph",
+    "duckdb"
   ],
   "author": "IzumiSy",
   "license": "MIT",
   "dependencies": {
     "@duckdb/node-api": "1.2.0-alpha.15",
     "@modelcontextprotocol/sdk": "^1.6.0",
-    "@types/lowdb": "^1.0.15",
-    "fuse.js": "^7.1.0",
-    "lowdb": "^7.0.1"
+    "fuse.js": "^7.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.13.5",

@@ -4,7 +4,7 @@ import {
   Relation,
   Observation,
   KnowledgeGraph,
-} from "../types";
+} from "./types";
 import { DuckDBInstance, DuckDBConnection } from "@duckdb/node-api";
 import Fuse from "fuse.js";
 import { dirname } from "path";
@@ -13,7 +13,7 @@ import { existsSync, mkdirSync } from "fs";
 /**
  * An implementation of the KnowledgeGraphManagerInterface that uses DuckDB and Fuse.js
  */
-export class DuckDBFuseKnowledgeGraphManager
+export class DuckDBKnowledgeGraphManager
   implements KnowledgeGraphManagerInterface
 {
   private instance: DuckDBInstance;
