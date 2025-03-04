@@ -1,5 +1,5 @@
 {
-  "name": "@izumisy/duckdb-memory-server",
+  "name": "@izumisy/mcp-duckdb-memory-server",
   "version": "1.0.0",
   "description": "MCP Memory Server with DuckDB backend",
   "type": "module",
