@@ -8,6 +8,7 @@ import {
 import { toolsSchema } from "./toolsSchema";
 import { DuckDBKnowledgeGraphManager } from "./manager";
 import { Entity, Observation, Relation } from "./types";
+import { McpLoggerAdapter, LogLevel, stringToLogLevel } from "./logger";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { join, dirname } from "path";
 import { homedir } from "os";
@@ -26,6 +27,8 @@ const server = new Server(
   }
 );
 
+const logger = new McpLoggerAdapter(server);
+
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: toolsSchema,
@@ -34,15 +37,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 
 server.setRequestHandler(SetLevelRequestSchema, async (request) => {
   const { level } = request.params;
-
-  await server.notification({
-    method: "notifications/message",
-    params: {
-      level: "debug",
-      data: `Logging level set to: ${level}`,
-    },
-  });
-
+  logger.setLevel(stringToLogLevel(level));
   return {};
 });
 
@@ -75,7 +70,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   const dbPath = getDbPath();
-  const knowledgeGraphManager = new DuckDBKnowledgeGraphManager(dbPath);
+  const knowledgeGraphManager = new DuckDBKnowledgeGraphManager(dbPath, logger);
 
   switch (name) {
     case "create_entities":
@@ -179,10 +174,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("DuckDB Knowledge Graph MCP Server running on stdio");
+  logger.info("DuckDB Knowledge Graph MCP Server running on stdio");
 }
 
 main().catch((error) => {
-  console.error("Fatal error in main():", error);
+  logger.error("Fatal error in main()", { error });
   process.exit(1);
 });

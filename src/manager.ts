@@ -5,6 +5,7 @@ import {
   Observation,
   KnowledgeGraph,
 } from "./types";
+import { Logger, ConsoleLogger } from "./logger";
 import { DuckDBInstance, DuckDBConnection } from "@duckdb/node-api";
 import Fuse from "fuse.js";
 import { dirname } from "path";
@@ -21,13 +22,16 @@ export class DuckDBKnowledgeGraphManager
   private fuse: Fuse<Entity>;
   private initialized: boolean = false;
   private dbPath: string;
+  private logger: Logger;
 
   /**
    * Constructor
    * @param dbPath Path to the database file
+   * @param logger Optional logger instance
    */
-  constructor(dbPath: string) {
+  constructor(dbPath: string, logger?: Logger) {
     this.dbPath = dbPath;
+    this.logger = logger || new ConsoleLogger();
 
     // Create directory if it doesn't exist
     if (!existsSync(dirname(dbPath))) {
@@ -110,7 +114,7 @@ export class DuckDBKnowledgeGraphManager
 
       this.initialized = true;
     } catch (error) {
-      console.error("Failed to initialize database:", error);
+      this.logger.error("Failed to initialize database:", { error });
       this.initialized = true;
     }
   }
@@ -152,7 +156,7 @@ export class DuckDBKnowledgeGraphManager
 
       return Array.from(entitiesMap.values());
     } catch (error) {
-      console.error("Error getting all entities:", error);
+      this.logger.error("Error getting all entities:", { error });
       return [];
     }
   }
@@ -216,7 +220,7 @@ export class DuckDBKnowledgeGraphManager
     } catch (error) {
       // Rollback in case of error
       await this.conn.run("ROLLBACK");
-      console.error("Error creating entities:", error);
+      this.logger.error("Error creating entities:", { error });
       throw error;
     }
   }
@@ -290,7 +294,7 @@ export class DuckDBKnowledgeGraphManager
     } catch (error) {
       // Rollback in case of error
       await this.conn.run("ROLLBACK");
-      console.error("Error creating relations:", error);
+      this.logger.error("Error creating relations:", { error });
       throw error;
     }
   }
@@ -369,7 +373,7 @@ export class DuckDBKnowledgeGraphManager
     } catch (error) {
       // Rollback in case of error
       await this.conn.run("ROLLBACK");
-      console.error("Error adding observations:", error);
+      this.logger.error("Error adding observations:", { error });
       throw error;
     }
   }
@@ -394,7 +398,7 @@ export class DuckDBKnowledgeGraphManager
           entityNames
         );
       } catch (error) {
-        console.error("Error deleting observations:", error);
+        this.logger.error("Error deleting observations:", { error });
         // Ignore error and continue
       }
 
@@ -405,7 +409,7 @@ export class DuckDBKnowledgeGraphManager
           [...entityNames, ...entityNames]
         );
       } catch (error) {
-        console.error("Error deleting relations:", error);
+        this.logger.error("Error deleting relations:", { error });
         // Ignore error and continue
       }
 
@@ -419,7 +423,7 @@ export class DuckDBKnowledgeGraphManager
       const allEntities = await this.getAllEntities();
       this.fuse.setCollection(allEntities);
     } catch (error) {
-      console.error("Error deleting entities:", error);
+      this.logger.error("Error deleting entities:", { error });
       throw error;
     }
   }
@@ -457,7 +461,7 @@ export class DuckDBKnowledgeGraphManager
     } catch (error) {
       // Rollback in case of error
       await this.conn.run("ROLLBACK");
-      console.error("Error deleting observations:", error);
+      this.logger.error("Error deleting observations:", { error });
       throw error;
     }
   }
@@ -486,7 +490,7 @@ export class DuckDBKnowledgeGraphManager
     } catch (error) {
       // Rollback in case of error
       await this.conn.run("ROLLBACK");
-      console.error("Error deleting relations:", error);
+      this.logger.error("Error deleting relations:", { error });
       throw error;
     }
   }
@@ -678,7 +682,7 @@ export class DuckDBKnowledgeGraphManager
         };
       }
     } catch (error) {
-      console.error("Error opening nodes:", error);
+      this.logger.error("Error opening nodes:", { error });
       return { entities: [], relations: [] };
     }
   }
