@@ -14,7 +14,7 @@ import { existsSync, mkdirSync } from "fs";
 
 const server = new Server(
   {
-    name: "pluggable-memory-server",
+    name: "duckdb-memory-server",
     version: "1.0.0",
   },
   {
@@ -40,14 +40,9 @@ function getDbPath(): string {
     return process.env.MEMORY_FILE_PATH;
   }
 
-  // Default path: ~/.local/share/pluggable-memory-server/knowledge-graph.json
-  const defaultDir = join(
-    homedir(),
-    ".local",
-    "share",
-    "pluggable-memory-server"
-  );
-  const defaultPath = join(defaultDir, "knowledge-graph.json");
+  // Default path: ~/.local/share/duckdb-memory-server/knowledge-graph.json
+  const defaultDir = join(homedir(), ".local", "share", "duckdb-memory-server");
+  const defaultPath = join(defaultDir, "knowledge-graph.data");
 
   // Create directory if it doesn't exist
   if (!existsSync(dirname(defaultPath))) {
@@ -168,7 +163,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("Pluggable Knowledge Graph MCP Server running on stdio");
+  console.error("DuckDB Knowledge Graph MCP Server running on stdio");
 }
 
 main().catch((error) => {
