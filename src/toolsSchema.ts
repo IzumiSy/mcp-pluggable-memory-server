@@ -173,14 +173,6 @@ export const toolsSchema = [
     },
   },
   {
-    name: "read_graph",
-    description: "Read the entire knowledge graph",
-    inputSchema: {
-      type: "object",
-      properties: {},
-    },
-  },
-  {
     name: "search_nodes",
     description: "Search for nodes in the knowledge graph based on a query",
     inputSchema: {
