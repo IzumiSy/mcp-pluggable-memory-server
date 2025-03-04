@@ -3,6 +3,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  SetLevelRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { toolsSchema } from "./toolsSchema";
 import { DuckDBKnowledgeGraphManager } from "./manager";
@@ -20,6 +21,7 @@ const server = new Server(
   {
     capabilities: {
       tools: {},
+      logging: {},
     },
   }
 );
@@ -30,11 +32,25 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   };
 });
 
+server.setRequestHandler(SetLevelRequestSchema, async (request) => {
+  const { level } = request.params;
+
+  await server.notification({
+    method: "notifications/message",
+    params: {
+      level: "debug",
+      data: `Logging level set to: ${level}`,
+    },
+  });
+
+  return {};
+});
+
 /**
  * Get the database file path based on environment variables or default location
  * @returns The path to the database file
  */
-function getDbPath(): string {
+const getDbPath = () => {
   if (process.env.MEMORY_FILE_PATH) {
     // Use environment variable if provided
     return process.env.MEMORY_FILE_PATH;
@@ -50,16 +66,16 @@ function getDbPath(): string {
   }
 
   return defaultPath;
-}
-
-const knowledgeGraphManager = new DuckDBKnowledgeGraphManager(getDbPath());
+};
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-
   if (!args) {
     throw new Error(`No arguments provided for tool: ${name}`);
   }
+
+  const dbPath = getDbPath();
+  const knowledgeGraphManager = new DuckDBKnowledgeGraphManager(dbPath);
 
   switch (name) {
     case "create_entities":
