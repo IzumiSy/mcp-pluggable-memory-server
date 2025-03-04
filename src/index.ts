@@ -8,7 +8,7 @@ import {
 import { toolsSchema } from "./toolsSchema";
 import { DuckDBKnowledgeGraphManager } from "./manager";
 import { Entity, Observation, Relation } from "./types";
-import { McpLoggerAdapter, LogLevel, stringToLogLevel } from "./logger";
+import { McpLoggerAdapter, stringToLogLevel } from "./logger";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { join, dirname } from "path";
 import { homedir } from "os";
@@ -28,6 +28,35 @@ const server = new Server(
 );
 
 const logger = new McpLoggerAdapter(server);
+const knowledgeGraphManager = new DuckDBKnowledgeGraphManager(
+  /**
+   * Get the database file path based on environment variables or default location
+   * @returns The path to the database file
+   */
+  () => {
+    if (process.env.MEMORY_FILE_PATH) {
+      // Use environment variable if provided
+      return process.env.MEMORY_FILE_PATH;
+    }
+
+    // Default path: ~/.local/share/duckdb-memory-server/knowledge-graph.json
+    const defaultDir = join(
+      homedir(),
+      ".local",
+      "share",
+      "duckdb-memory-server"
+    );
+    const defaultPath = join(defaultDir, "knowledge-graph.data");
+
+    // Create directory if it doesn't exist
+    if (!existsSync(dirname(defaultPath))) {
+      mkdirSync(dirname(defaultPath), { recursive: true });
+    }
+
+    return defaultPath;
+  },
+  logger
+);
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
@@ -41,36 +70,11 @@ server.setRequestHandler(SetLevelRequestSchema, async (request) => {
   return {};
 });
 
-/**
- * Get the database file path based on environment variables or default location
- * @returns The path to the database file
- */
-const getDbPath = () => {
-  if (process.env.MEMORY_FILE_PATH) {
-    // Use environment variable if provided
-    return process.env.MEMORY_FILE_PATH;
-  }
-
-  // Default path: ~/.local/share/duckdb-memory-server/knowledge-graph.json
-  const defaultDir = join(homedir(), ".local", "share", "duckdb-memory-server");
-  const defaultPath = join(defaultDir, "knowledge-graph.data");
-
-  // Create directory if it doesn't exist
-  if (!existsSync(dirname(defaultPath))) {
-    mkdirSync(dirname(defaultPath), { recursive: true });
-  }
-
-  return defaultPath;
-};
-
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
   if (!args) {
     throw new Error(`No arguments provided for tool: ${name}`);
   }
-
-  const dbPath = getDbPath();
-  const knowledgeGraphManager = new DuckDBKnowledgeGraphManager(dbPath, logger);
 
   switch (name) {
     case "create_entities":
@@ -171,13 +175,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-async function main() {
+const main = async () => {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   logger.info("DuckDB Knowledge Graph MCP Server running on stdio");
-}
+};
 
 main().catch((error) => {
-  logger.error("Fatal error in main()", { error });
+  console.error(error);
   process.exit(1);
 });

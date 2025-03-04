@@ -98,9 +98,9 @@ describe("DuckDBFuseKnowledgeGraphManager", () => {
   ];
 
   // Run before each test
-  beforeEach(() => {
+  beforeEach(async () => {
     // Create test manager
-    manager = new DuckDBKnowledgeGraphManager(testDbPath);
+    manager = new DuckDBKnowledgeGraphManager(() => testDbPath);
   });
 
   // Run after each test

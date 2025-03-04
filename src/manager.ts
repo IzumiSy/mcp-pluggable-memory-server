@@ -6,10 +6,11 @@ import {
   KnowledgeGraph,
 } from "./types";
 import { Logger, ConsoleLogger } from "./logger";
-import { DuckDBInstance, DuckDBConnection } from "@duckdb/node-api";
+import { DuckDBInstance } from "@duckdb/node-api";
 import Fuse from "fuse.js";
 import { dirname } from "path";
 import { existsSync, mkdirSync } from "fs";
+import { extractError } from "./utils";
 
 /**
  * An implementation of the KnowledgeGraphManagerInterface that uses DuckDB and Fuse.js
@@ -18,29 +19,64 @@ export class DuckDBKnowledgeGraphManager
   implements KnowledgeGraphManagerInterface
 {
   private instance: DuckDBInstance;
-  private conn: DuckDBConnection;
   private fuse: Fuse<Entity>;
   private initialized: boolean = false;
   private dbPath: string;
   private logger: Logger;
 
+  /*
+   * Helper function to get connection
+   *
+   * DuckDB does not support concurrent write operations,
+   * so we need to ensure that only one connection is opened at a time.
+   */
+  private async getConn() {
+    if (!this.instance) {
+      await this.initialize();
+    }
+
+    const conn = await this.instance.connect();
+
+    return {
+      execute: async (sql: string, params?: any[]): Promise<void> => {
+        this.logger.info("Executing query", {
+          sql,
+          params: params ? params : undefined,
+        });
+        await conn.run(sql, params);
+      },
+      executeAndReadAll: async (sql: string, params?: any[]): Promise<any> => {
+        this.logger.info("Executing query", {
+          sql,
+          params: params ? params : undefined,
+        });
+        return await conn.runAndReadAll(sql, params);
+      },
+      [Symbol.dispose]: () => {
+        conn.close();
+      },
+    };
+  }
+
   /**
    * Constructor
-   * @param dbPath Path to the database file
+   * @param dbPathResolver Path to the database file
    * @param logger Optional logger instance
    */
-  constructor(dbPath: string, logger?: Logger) {
+  constructor(dbPathResolver: () => string, logger?: Logger) {
+    const dbPath = dbPathResolver();
     this.dbPath = dbPath;
     this.logger = logger || new ConsoleLogger();
 
     // Create directory if it doesn't exist
-    if (!existsSync(dirname(dbPath))) {
-      mkdirSync(dirname(dbPath), { recursive: true });
+    const dbPathDir = dirname(dbPath);
+    if (!existsSync(dbPathDir)) {
+      mkdirSync(dbPathDir, { recursive: true });
     }
 
-    // DuckDB initialization is asynchronous, so we don't initialize in the constructor but in the initialize() method
+    // DuckDB initialization is asynchronous,
+    // so we don't initialize in the constructor but in the initialize() method
     this.instance = null as any;
-    this.conn = null as any;
 
     // Initialize Fuse.js
     this.fuse = new Fuse<Entity>([], {
@@ -54,34 +90,31 @@ export class DuckDBKnowledgeGraphManager
    * Initialize the database
    * @private
    */
-  private async initialize(): Promise<void> {
+  async initialize(): Promise<void> {
     if (this.initialized) return;
 
     try {
-      // Initialize DuckDB
+      // Initialize DuckDB reader instance
       if (!this.instance) {
         this.instance = await DuckDBInstance.create(this.dbPath);
-        this.conn = await this.instance.connect();
       }
 
-      // Create tables
-      await this.conn.run(`
+      using conn = await this.getConn();
+
+      // Create tables if they don't exist
+      await conn.execute(`
         CREATE TABLE IF NOT EXISTS entities (
           name VARCHAR PRIMARY KEY,
           entityType VARCHAR
         );
-      `);
 
-      await this.conn.run(`
         CREATE TABLE IF NOT EXISTS observations (
           entityName VARCHAR,
           content VARCHAR,
           FOREIGN KEY (entityName) REFERENCES entities(name),
           PRIMARY KEY (entityName, content)
         );
-      `);
 
-      await this.conn.run(`
         CREATE TABLE IF NOT EXISTS relations (
           from_entity VARCHAR,
           to_entity VARCHAR,
@@ -90,19 +123,12 @@ export class DuckDBKnowledgeGraphManager
           FOREIGN KEY (to_entity) REFERENCES entities(name),
           PRIMARY KEY (from_entity, to_entity, relationType)
         );
-      `);
 
-      // Create indexes
-      await this.conn.run(`
         CREATE INDEX IF NOT EXISTS idx_entities_type ON entities(entityType);
-      `);
 
-      await this.conn.run(`
         CREATE INDEX IF NOT EXISTS idx_observations_entity ON observations(entityName);
         CREATE INDEX IF NOT EXISTS idx_observations_content ON observations(content);
-      `);
 
-      await this.conn.run(`
         CREATE INDEX IF NOT EXISTS idx_relations_from ON relations(from_entity);
         CREATE INDEX IF NOT EXISTS idx_relations_to ON relations(to_entity);
         CREATE INDEX IF NOT EXISTS idx_relations_type ON relations(relationType);
@@ -114,7 +140,7 @@ export class DuckDBKnowledgeGraphManager
 
       this.initialized = true;
     } catch (error) {
-      this.logger.error("Failed to initialize database:", { error });
+      this.logger.error("Failed to initialize database", extractError(error));
       this.initialized = true;
     }
   }
@@ -125,8 +151,10 @@ export class DuckDBKnowledgeGraphManager
    */
   private async getAllEntities(): Promise<Entity[]> {
     try {
+      using conn = await this.getConn();
+
       // Retrieve entities and observations at once using LEFT JOIN
-      const reader = await this.conn.runAndReadAll(`
+      const reader = await conn.executeAndReadAll(`
         SELECT e.name, e.entityType, o.content
         FROM entities e
         LEFT JOIN observations o ON e.name = o.entityName
@@ -155,8 +183,8 @@ export class DuckDBKnowledgeGraphManager
       }
 
       return Array.from(entitiesMap.values());
-    } catch (error) {
-      this.logger.error("Error getting all entities:", { error });
+    } catch (error: unknown) {
+      this.logger.error("Error getting all entities", extractError(error));
       return [];
     }
   }
@@ -167,16 +195,16 @@ export class DuckDBKnowledgeGraphManager
    * @returns Array of created entities
    */
   async createEntities(entities: Entity[]): Promise<Entity[]> {
-    await this.initialize();
-
     const createdEntities: Entity[] = [];
 
-    // Begin transaction
-    await this.conn.run("BEGIN TRANSACTION");
+    using conn = await this.getConn();
 
     try {
+      // Begin transaction
+      await conn.execute("BEGIN TRANSACTION");
+
       // Get existing entity names
-      const existingEntitiesReader = await this.conn.runAndReadAll(
+      const existingEntitiesReader = await conn.executeAndReadAll(
         "SELECT name FROM entities"
       );
       const existingEntitiesData = existingEntitiesReader.getRows();
@@ -193,14 +221,14 @@ export class DuckDBKnowledgeGraphManager
       // Insert new entities
       for (const entity of newEntities) {
         // Insert entity
-        await this.conn.run(
+        await conn.execute(
           "INSERT INTO entities (name, entityType) VALUES (?, ?)",
           [entity.name, entity.entityType]
         );
 
         // Insert observations
         for (const observation of entity.observations) {
-          await this.conn.run(
+          await conn.execute(
             "INSERT INTO observations (entityName, content) VALUES (?, ?)",
             [entity.name, observation]
           );
@@ -210,17 +238,17 @@ export class DuckDBKnowledgeGraphManager
       }
 
       // Commit transaction
-      await this.conn.run("COMMIT");
+      await conn.execute("COMMIT");
 
       // Update Fuse.js index
       const allEntities = await this.getAllEntities();
       this.fuse.setCollection(allEntities);
 
       return createdEntities;
-    } catch (error) {
+    } catch (error: unknown) {
       // Rollback in case of error
-      await this.conn.run("ROLLBACK");
-      this.logger.error("Error creating entities:", { error });
+      await conn.execute("ROLLBACK");
+      this.logger.error("Error creating entities", extractError(error));
       throw error;
     }
   }
@@ -231,14 +259,14 @@ export class DuckDBKnowledgeGraphManager
    * @returns Array of created relations
    */
   async createRelations(relations: Relation[]): Promise<Relation[]> {
-    await this.initialize();
-
-    // Begin transaction
-    await this.conn.run("BEGIN TRANSACTION");
+    using conn = await this.getConn();
 
     try {
+      // Begin transaction
+      await conn.execute("BEGIN TRANSACTION");
+
       // Get the set of entity names
-      const entityNamesReader = await this.conn.runAndReadAll(
+      const entityNamesReader = await conn.executeAndReadAll(
         "SELECT name FROM entities"
       );
       const entityNamesData = entityNamesReader.getRows();
@@ -254,7 +282,7 @@ export class DuckDBKnowledgeGraphManager
       );
 
       // Get existing relations
-      const existingRelationsReader = await this.conn.runAndReadAll(
+      const existingRelationsReader = await conn.executeAndReadAll(
         'SELECT from_entity as "from", to_entity as "to", relationType FROM relations'
       );
       const existingRelationsData = existingRelationsReader.getRows();
@@ -281,20 +309,20 @@ export class DuckDBKnowledgeGraphManager
 
       // Insert new relations
       for (const relation of newRelations) {
-        await this.conn.run(
+        await conn.execute(
           "INSERT INTO relations (from_entity, to_entity, relationType) VALUES (?, ?, ?)",
           [relation.from, relation.to, relation.relationType]
         );
       }
 
       // Commit transaction
-      await this.conn.run("COMMIT");
+      await conn.execute("COMMIT");
 
       return newRelations;
-    } catch (error) {
+    } catch (error: unknown) {
       // Rollback in case of error
-      await this.conn.run("ROLLBACK");
-      this.logger.error("Error creating relations:", { error });
+      await conn.execute("ROLLBACK");
+      this.logger.error("Error creating relations", extractError(error));
       throw error;
     }
   }
@@ -307,18 +335,18 @@ export class DuckDBKnowledgeGraphManager
   async addObservations(
     observations: Array<Observation>
   ): Promise<Observation[]> {
-    await this.initialize();
-
     const addedObservations: Observation[] = [];
 
-    // Begin transaction
-    await this.conn.run("BEGIN TRANSACTION");
+    using conn = await this.getConn();
 
     try {
+      // Begin transaction
+      await conn.execute("BEGIN TRANSACTION");
+
       // Process each observation
       for (const observation of observations) {
         // Check if entity exists
-        const entityReader = await this.conn.runAndReadAll(
+        const entityReader = await conn.executeAndReadAll(
           "SELECT name FROM entities WHERE name = ?",
           [observation.entityName as string]
         );
@@ -328,7 +356,7 @@ export class DuckDBKnowledgeGraphManager
         // If entity exists
         if (entityRows.length > 0) {
           // Get existing observations
-          const existingObservationsReader = await this.conn.runAndReadAll(
+          const existingObservationsReader = await conn.executeAndReadAll(
             "SELECT content FROM observations WHERE entityName = ?",
             [observation.entityName as string]
           );
@@ -348,7 +376,7 @@ export class DuckDBKnowledgeGraphManager
           // Insert new observations
           if (newContents.length > 0) {
             for (const content of newContents) {
-              await this.conn.run(
+              await conn.execute(
                 "INSERT INTO observations (entityName, content) VALUES (?, ?)",
                 [observation.entityName, content]
               );
@@ -363,17 +391,17 @@ export class DuckDBKnowledgeGraphManager
       }
 
       // Commit transaction
-      await this.conn.run("COMMIT");
+      await conn.execute("COMMIT");
 
       // Update Fuse.js index
       const allEntities = await this.getAllEntities();
       this.fuse.setCollection(allEntities);
 
       return addedObservations;
-    } catch (error) {
+    } catch (error: unknown) {
       // Rollback in case of error
-      await this.conn.run("ROLLBACK");
-      this.logger.error("Error adding observations:", { error });
+      await conn.execute("ROLLBACK");
+      this.logger.error("Error adding observations", extractError(error));
       throw error;
     }
   }
@@ -383,38 +411,38 @@ export class DuckDBKnowledgeGraphManager
    * @param entityNames Array of entity names to delete
    */
   async deleteEntities(entityNames: string[]): Promise<void> {
-    await this.initialize();
-
     if (entityNames.length === 0) return;
 
     try {
+      using conn = await this.getConn();
+
       // Create placeholders
       const placeholders = entityNames.map(() => "?").join(",");
 
       // Delete related observations first
       try {
-        await this.conn.run(
+        await conn.execute(
           `DELETE FROM observations WHERE entityName IN (${placeholders})`,
           entityNames
         );
-      } catch (error) {
-        this.logger.error("Error deleting observations:", { error });
+      } catch (error: unknown) {
+        this.logger.error("Error deleting observations", extractError(error));
         // Ignore error and continue
       }
 
       // Delete related relations
       try {
-        await this.conn.run(
+        await conn.execute(
           `DELETE FROM relations WHERE from_entity IN (${placeholders}) OR to_entity IN (${placeholders})`,
           [...entityNames, ...entityNames]
         );
-      } catch (error) {
-        this.logger.error("Error deleting relations:", { error });
+      } catch (error: unknown) {
+        this.logger.error("Error deleting relations", extractError(error));
         // Ignore error and continue
       }
 
       // Delete entities
-      await this.conn.run(
+      await conn.execute(
         `DELETE FROM entities WHERE name IN (${placeholders})`,
         entityNames
       );
@@ -422,8 +450,8 @@ export class DuckDBKnowledgeGraphManager
       // Update Fuse.js index
       const allEntities = await this.getAllEntities();
       this.fuse.setCollection(allEntities);
-    } catch (error) {
-      this.logger.error("Error deleting entities:", { error });
+    } catch (error: unknown) {
+      this.logger.error("Error deleting entities", extractError(error));
       throw error;
     }
   }
@@ -433,18 +461,18 @@ export class DuckDBKnowledgeGraphManager
    * @param deletions Array of observations to delete
    */
   async deleteObservations(deletions: Array<Observation>): Promise<void> {
-    await this.initialize();
-
-    // Begin transaction
-    await this.conn.run("BEGIN TRANSACTION");
+    using conn = await this.getConn();
 
     try {
+      // Begin transaction
+      await conn.execute("BEGIN TRANSACTION");
+
       // Process each deletion
       for (const deletion of deletions) {
         // If there are observations to delete
         if (deletion.contents.length > 0) {
           for (const content of deletion.contents) {
-            await this.conn.run(
+            await conn.execute(
               "DELETE FROM observations WHERE entityName = ? AND content = ?",
               [deletion.entityName, content]
             );
@@ -453,15 +481,15 @@ export class DuckDBKnowledgeGraphManager
       }
 
       // Commit transaction
-      await this.conn.run("COMMIT");
+      await conn.execute("COMMIT");
 
       // Update Fuse.js index
       const allEntities = await this.getAllEntities();
       this.fuse.setCollection(allEntities);
-    } catch (error) {
+    } catch (error: unknown) {
       // Rollback in case of error
-      await this.conn.run("ROLLBACK");
-      this.logger.error("Error deleting observations:", { error });
+      await conn.execute("ROLLBACK");
+      this.logger.error("Error deleting observations", extractError(error));
       throw error;
     }
   }
@@ -471,26 +499,26 @@ export class DuckDBKnowledgeGraphManager
    * @param relations Array of relations to delete
    */
   async deleteRelations(relations: Relation[]): Promise<void> {
-    await this.initialize();
-
-    // Begin transaction
-    await this.conn.run("BEGIN TRANSACTION");
+    using conn = await this.getConn();
 
     try {
+      // Begin transaction
+      await conn.execute("BEGIN TRANSACTION");
+
       // Delete each relation
       for (const relation of relations) {
-        await this.conn.run(
+        await conn.execute(
           "DELETE FROM relations WHERE from_entity = ? AND to_entity = ? AND relationType = ?",
           [relation.from, relation.to, relation.relationType]
         );
       }
 
       // Commit transaction
-      await this.conn.run("COMMIT");
-    } catch (error) {
+      await conn.execute("COMMIT");
+    } catch (error: unknown) {
       // Rollback in case of error
-      await this.conn.run("ROLLBACK");
-      this.logger.error("Error deleting relations:", { error });
+      await conn.execute("ROLLBACK");
+      this.logger.error("Error deleting relations", extractError(error));
       throw error;
     }
   }
@@ -501,8 +529,6 @@ export class DuckDBKnowledgeGraphManager
    * @returns Knowledge graph with matching entities and their relations
    */
   async searchNodes(query: string): Promise<KnowledgeGraph> {
-    await this.initialize();
-
     if (!query || query.trim() === "") {
       return { entities: [], relations: [] };
     }
@@ -536,8 +562,10 @@ export class DuckDBKnowledgeGraphManager
     // Create placeholders
     const placeholders = entityNames.map(() => "?").join(",");
 
+    using conn = await this.getConn();
+
     // Get related relations
-    const relationsReader = await this.conn.runAndReadAll(
+    const relationsReader = await conn.executeAndReadAll(
       `
       SELECT from_entity as "from", to_entity as "to", relationType
       FROM relations
@@ -568,13 +596,13 @@ export class DuckDBKnowledgeGraphManager
    * @returns The complete knowledge graph
    */
   async readGraph(): Promise<KnowledgeGraph> {
-    await this.initialize();
-
     // Get all entities
     const entities = await this.getAllEntities();
 
+    using conn = await this.getConn();
+
     // Get all relations
-    const relationsReader = await this.conn.runAndReadAll(
+    const relationsReader = await conn.executeAndReadAll(
       'SELECT from_entity as "from", to_entity as "to", relationType FROM relations'
     );
     const relationsData = relationsReader.getRows();
@@ -600,18 +628,18 @@ export class DuckDBKnowledgeGraphManager
    * @returns Knowledge graph with matching entities and their relations
    */
   async openNodes(names: string[]): Promise<KnowledgeGraph> {
-    await this.initialize();
-
     if (names.length === 0) {
       return { entities: [], relations: [] };
     }
 
     try {
+      using conn = await this.getConn();
+
       // Create placeholders
       const placeholders = names.map(() => "?").join(",");
 
       // Retrieve entities and observations at once using LEFT JOIN
-      const reader = await this.conn.runAndReadAll(
+      const reader = await conn.executeAndReadAll(
         `
         SELECT e.name, e.entityType, o.content
         FROM entities e
@@ -651,7 +679,7 @@ export class DuckDBKnowledgeGraphManager
       // Get related relations
       if (entityNames.length > 0) {
         const placeholders = entityNames.map(() => "?").join(",");
-        const relationsReader = await this.conn.runAndReadAll(
+        const relationsReader = await conn.executeAndReadAll(
           `
         SELECT from_entity as "from", to_entity as "to", relationType
         FROM relations
@@ -681,8 +709,8 @@ export class DuckDBKnowledgeGraphManager
           relations: [],
         };
       }
-    } catch (error) {
-      this.logger.error("Error opening nodes:", { error });
+    } catch (error: unknown) {
+      this.logger.error("Error opening nodes", extractError(error));
       return { entities: [], relations: [] };
     }
   }
