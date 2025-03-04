@@ -29,16 +29,16 @@ export class DuckDBKnowledgeGraphManager
   constructor(dbPath: string) {
     this.dbPath = dbPath;
 
-    // ディレクトリが存在しない場合は作成
+    // Create directory if it doesn't exist
     if (!existsSync(dirname(dbPath))) {
       mkdirSync(dirname(dbPath), { recursive: true });
     }
 
-    // DuckDBの初期化は非同期なので、constructorでは初期化せず、initialize()メソッドで行う
+    // DuckDB initialization is asynchronous, so we don't initialize in the constructor but in the initialize() method
     this.instance = null as any;
     this.conn = null as any;
 
-    // Fuse.jsの初期化
+    // Initialize Fuse.js
     this.fuse = new Fuse<Entity>([], {
       keys: ["name", "entityType", "observations"],
       includeScore: true,
@@ -54,13 +54,13 @@ export class DuckDBKnowledgeGraphManager
     if (this.initialized) return;
 
     try {
-      // DuckDBの初期化
+      // Initialize DuckDB
       if (!this.instance) {
         this.instance = await DuckDBInstance.create(this.dbPath);
         this.conn = await this.instance.connect();
       }
 
-      // テーブルの作成
+      // Create tables
       await this.conn.run(`
         CREATE TABLE IF NOT EXISTS entities (
           name VARCHAR PRIMARY KEY,
@@ -88,7 +88,7 @@ export class DuckDBKnowledgeGraphManager
         );
       `);
 
-      // インデックスの作成
+      // Create indexes
       await this.conn.run(`
         CREATE INDEX IF NOT EXISTS idx_entities_type ON entities(entityType);
       `);
@@ -104,7 +104,7 @@ export class DuckDBKnowledgeGraphManager
         CREATE INDEX IF NOT EXISTS idx_relations_type ON relations(relationType);
       `);
 
-      // Fuse.jsのインデックスを構築
+      // Build Fuse.js index
       const entities = await this.getAllEntities();
       this.fuse.setCollection(entities);
 
@@ -121,7 +121,7 @@ export class DuckDBKnowledgeGraphManager
    */
   private async getAllEntities(): Promise<Entity[]> {
     try {
-      // LEFT JOINを使用してエンティティと観察を一度に取得
+      // Retrieve entities and observations at once using LEFT JOIN
       const reader = await this.conn.runAndReadAll(`
         SELECT e.name, e.entityType, o.content
         FROM entities e
@@ -129,7 +129,7 @@ export class DuckDBKnowledgeGraphManager
       `);
       const rows = reader.getRows();
 
-      // 結果をエンティティごとにグループ化
+      // Group results by entity
       const entitiesMap = new Map<string, Entity>();
 
       for (const row of rows) {
@@ -138,14 +138,14 @@ export class DuckDBKnowledgeGraphManager
         const content = row[2] as string | null;
 
         if (!entitiesMap.has(name)) {
-          // 新しいエンティティを作成
+          // Create a new entity
           entitiesMap.set(name, {
             name,
             entityType,
             observations: content ? [content] : [],
           });
         } else if (content) {
-          // 既存のエンティティに観察を追加
+          // Add observation to existing entity
           entitiesMap.get(name)!.observations.push(content);
         }
       }
@@ -167,34 +167,34 @@ export class DuckDBKnowledgeGraphManager
 
     const createdEntities: Entity[] = [];
 
-    // トランザクションを開始
+    // Begin transaction
     await this.conn.run("BEGIN TRANSACTION");
 
     try {
-      // 既存のエンティティ名を取得
+      // Get existing entity names
       const existingEntitiesReader = await this.conn.runAndReadAll(
         "SELECT name FROM entities"
       );
       const existingEntitiesData = existingEntitiesReader.getRows();
-      const nameColumnIndex = 0; // name列は最初の列
+      const nameColumnIndex = 0; // name column is the first column
       const existingNames = new Set(
         existingEntitiesData.map((row) => row[nameColumnIndex] as string)
       );
 
-      // 新しいエンティティをフィルタリング
+      // Filter new entities
       const newEntities = entities.filter(
         (entity) => !existingNames.has(entity.name)
       );
 
-      // 新しいエンティティを挿入
+      // Insert new entities
       for (const entity of newEntities) {
-        // エンティティを挿入
+        // Insert entity
         await this.conn.run(
           "INSERT INTO entities (name, entityType) VALUES (?, ?)",
           [entity.name, entity.entityType]
         );
 
-        // 観察を挿入
+        // Insert observations
         for (const observation of entity.observations) {
           await this.conn.run(
             "INSERT INTO observations (entityName, content) VALUES (?, ?)",
@@ -205,16 +205,16 @@ export class DuckDBKnowledgeGraphManager
         createdEntities.push(entity);
       }
 
-      // トランザクションをコミット
+      // Commit transaction
       await this.conn.run("COMMIT");
 
-      // Fuse.jsのインデックスを更新
+      // Update Fuse.js index
       const allEntities = await this.getAllEntities();
       this.fuse.setCollection(allEntities);
 
       return createdEntities;
     } catch (error) {
-      // エラーが発生した場合はロールバック
+      // Rollback in case of error
       await this.conn.run("ROLLBACK");
       console.error("Error creating entities:", error);
       throw error;
@@ -229,33 +229,33 @@ export class DuckDBKnowledgeGraphManager
   async createRelations(relations: Relation[]): Promise<Relation[]> {
     await this.initialize();
 
-    // トランザクションを開始
+    // Begin transaction
     await this.conn.run("BEGIN TRANSACTION");
 
     try {
-      // エンティティ名のセットを取得
+      // Get the set of entity names
       const entityNamesReader = await this.conn.runAndReadAll(
         "SELECT name FROM entities"
       );
       const entityNamesData = entityNamesReader.getRows();
-      const nameColumnIndex = 0; // name列は最初の列
+      const nameColumnIndex = 0; // name column is the first column
       const entityNames = new Set(
         entityNamesData.map((row) => row[nameColumnIndex] as string)
       );
 
-      // 有効なリレーションをフィルタリング（fromとtoの両方のエンティティが存在する必要がある）
+      // Filter valid relations (both from and to entities must exist)
       const validRelations = relations.filter(
         (relation) =>
           entityNames.has(relation.from) && entityNames.has(relation.to)
       );
 
-      // 既存のリレーションを取得
+      // Get existing relations
       const existingRelationsReader = await this.conn.runAndReadAll(
         'SELECT from_entity as "from", to_entity as "to", relationType FROM relations'
       );
       const existingRelationsData = existingRelationsReader.getRows();
 
-      // 結果をRelationオブジェクトの配列に変換
+      // Convert results to an array of Relation objects
       const existingRelations = existingRelationsData.map((row) => {
         return {
           from: row[0] as string,
@@ -264,7 +264,7 @@ export class DuckDBKnowledgeGraphManager
         };
       });
 
-      // 新しいリレーションをフィルタリング
+      // Filter new relations
       const newRelations = validRelations.filter(
         (newRel) =>
           !existingRelations.some(
@@ -275,7 +275,7 @@ export class DuckDBKnowledgeGraphManager
           )
       );
 
-      // 新しいリレーションを挿入
+      // Insert new relations
       for (const relation of newRelations) {
         await this.conn.run(
           "INSERT INTO relations (from_entity, to_entity, relationType) VALUES (?, ?, ?)",
@@ -283,12 +283,12 @@ export class DuckDBKnowledgeGraphManager
         );
       }
 
-      // トランザクションをコミット
+      // Commit transaction
       await this.conn.run("COMMIT");
 
       return newRelations;
     } catch (error) {
-      // エラーが発生した場合はロールバック
+      // Rollback in case of error
       await this.conn.run("ROLLBACK");
       console.error("Error creating relations:", error);
       throw error;
@@ -307,41 +307,41 @@ export class DuckDBKnowledgeGraphManager
 
     const addedObservations: Observation[] = [];
 
-    // トランザクションを開始
+    // Begin transaction
     await this.conn.run("BEGIN TRANSACTION");
 
     try {
-      // 各観察を処理
+      // Process each observation
       for (const observation of observations) {
-        // エンティティが存在するか確認
+        // Check if entity exists
         const entityReader = await this.conn.runAndReadAll(
           "SELECT name FROM entities WHERE name = ?",
           [observation.entityName as string]
         );
         const entityRows = entityReader.getRows();
-        // 行数で存在確認
+        // Confirm existence by row count
 
-        // エンティティが存在する場合
+        // If entity exists
         if (entityRows.length > 0) {
-          // 既存の観察を取得
+          // Get existing observations
           const existingObservationsReader = await this.conn.runAndReadAll(
             "SELECT content FROM observations WHERE entityName = ?",
             [observation.entityName as string]
           );
           const existingObservationsData = existingObservationsReader.getRows();
-          const contentColumnIndex = 0; // content列は最初の列
+          const contentColumnIndex = 0; // content column is the first column
           const existingObservations = new Set(
             existingObservationsData.map(
               (row) => row[contentColumnIndex] as string
             )
           );
 
-          // 新しい観察をフィルタリング
+          // Filter new observations
           const newContents = observation.contents.filter(
             (content) => !existingObservations.has(content)
           );
 
-          // 新しい観察を挿入
+          // Insert new observations
           if (newContents.length > 0) {
             for (const content of newContents) {
               await this.conn.run(
@@ -358,16 +358,16 @@ export class DuckDBKnowledgeGraphManager
         }
       }
 
-      // トランザクションをコミット
+      // Commit transaction
       await this.conn.run("COMMIT");
 
-      // Fuse.jsのインデックスを更新
+      // Update Fuse.js index
       const allEntities = await this.getAllEntities();
       this.fuse.setCollection(allEntities);
 
       return addedObservations;
     } catch (error) {
-      // エラーが発生した場合はロールバック
+      // Rollback in case of error
       await this.conn.run("ROLLBACK");
       console.error("Error adding observations:", error);
       throw error;
@@ -384,10 +384,10 @@ export class DuckDBKnowledgeGraphManager
     if (entityNames.length === 0) return;
 
     try {
-      // プレースホルダーを作成
+      // Create placeholders
       const placeholders = entityNames.map(() => "?").join(",");
 
-      // 関連する観察を先に削除
+      // Delete related observations first
       try {
         await this.conn.run(
           `DELETE FROM observations WHERE entityName IN (${placeholders})`,
@@ -395,10 +395,10 @@ export class DuckDBKnowledgeGraphManager
         );
       } catch (error) {
         console.error("Error deleting observations:", error);
-        // エラーを無視して続行
+        // Ignore error and continue
       }
 
-      // 関連するリレーションを削除
+      // Delete related relations
       try {
         await this.conn.run(
           `DELETE FROM relations WHERE from_entity IN (${placeholders}) OR to_entity IN (${placeholders})`,
@@ -406,16 +406,16 @@ export class DuckDBKnowledgeGraphManager
         );
       } catch (error) {
         console.error("Error deleting relations:", error);
-        // エラーを無視して続行
+        // Ignore error and continue
       }
 
-      // エンティティを削除
+      // Delete entities
       await this.conn.run(
         `DELETE FROM entities WHERE name IN (${placeholders})`,
         entityNames
       );
 
-      // Fuse.jsのインデックスを更新
+      // Update Fuse.js index
       const allEntities = await this.getAllEntities();
       this.fuse.setCollection(allEntities);
     } catch (error) {
@@ -431,13 +431,13 @@ export class DuckDBKnowledgeGraphManager
   async deleteObservations(deletions: Array<Observation>): Promise<void> {
     await this.initialize();
 
-    // トランザクションを開始
+    // Begin transaction
     await this.conn.run("BEGIN TRANSACTION");
 
     try {
-      // 各削除を処理
+      // Process each deletion
       for (const deletion of deletions) {
-        // 削除する観察がある場合
+        // If there are observations to delete
         if (deletion.contents.length > 0) {
           for (const content of deletion.contents) {
             await this.conn.run(
@@ -448,14 +448,14 @@ export class DuckDBKnowledgeGraphManager
         }
       }
 
-      // トランザクションをコミット
+      // Commit transaction
       await this.conn.run("COMMIT");
 
-      // Fuse.jsのインデックスを更新
+      // Update Fuse.js index
       const allEntities = await this.getAllEntities();
       this.fuse.setCollection(allEntities);
     } catch (error) {
-      // エラーが発生した場合はロールバック
+      // Rollback in case of error
       await this.conn.run("ROLLBACK");
       console.error("Error deleting observations:", error);
       throw error;
@@ -469,11 +469,11 @@ export class DuckDBKnowledgeGraphManager
   async deleteRelations(relations: Relation[]): Promise<void> {
     await this.initialize();
 
-    // トランザクションを開始
+    // Begin transaction
     await this.conn.run("BEGIN TRANSACTION");
 
     try {
-      // 各リレーションを削除
+      // Delete each relation
       for (const relation of relations) {
         await this.conn.run(
           "DELETE FROM relations WHERE from_entity = ? AND to_entity = ? AND relationType = ?",
@@ -481,10 +481,10 @@ export class DuckDBKnowledgeGraphManager
         );
       }
 
-      // トランザクションをコミット
+      // Commit transaction
       await this.conn.run("COMMIT");
     } catch (error) {
-      // エラーが発生した場合はロールバック
+      // Rollback in case of error
       await this.conn.run("ROLLBACK");
       console.error("Error deleting relations:", error);
       throw error;
@@ -503,16 +503,16 @@ export class DuckDBKnowledgeGraphManager
       return { entities: [], relations: [] };
     }
 
-    // 全てのエンティティを取得
+    // Get all entities
     const allEntities = await this.getAllEntities();
 
-    // Fuse.jsのコレクションを更新
+    // Update Fuse.js collection
     this.fuse.setCollection(allEntities);
 
-    // 検索を実行
+    // Execute search
     const results = this.fuse.search(query);
 
-    // 検索結果からエンティティを抽出（重複を除去）
+    // Extract entities from search results (remove duplicates)
     const uniqueEntities = new Map<string, Entity>();
     for (const result of results) {
       if (!uniqueEntities.has(result.item.name)) {
@@ -522,17 +522,17 @@ export class DuckDBKnowledgeGraphManager
 
     const entities = Array.from(uniqueEntities.values());
 
-    // エンティティ名のセットを作成
+    // Create a set of entity names
     const entityNames = entities.map((entity) => entity.name);
 
     if (entityNames.length === 0) {
       return { entities: [], relations: [] };
     }
 
-    // プレースホルダーを作成
+    // Create placeholders
     const placeholders = entityNames.map(() => "?").join(",");
 
-    // 関連するリレーションを取得
+    // Get related relations
     const relationsReader = await this.conn.runAndReadAll(
       `
       SELECT from_entity as "from", to_entity as "to", relationType
@@ -544,7 +544,7 @@ export class DuckDBKnowledgeGraphManager
     );
     const relationsData = relationsReader.getRows();
 
-    // 結果をRelationオブジェクトの配列に変換
+    // Convert results to an array of Relation objects
     const relations = relationsData.map((row) => {
       return {
         from: row[0] as string,
@@ -566,16 +566,16 @@ export class DuckDBKnowledgeGraphManager
   async readGraph(): Promise<KnowledgeGraph> {
     await this.initialize();
 
-    // 全てのエンティティを取得
+    // Get all entities
     const entities = await this.getAllEntities();
 
-    // 全てのリレーションを取得
+    // Get all relations
     const relationsReader = await this.conn.runAndReadAll(
       'SELECT from_entity as "from", to_entity as "to", relationType FROM relations'
     );
     const relationsData = relationsReader.getRows();
 
-    // 結果をRelationオブジェクトの配列に変換
+    // Convert results to an array of Relation objects
     const relations = relationsData.map((row) => {
       return {
         from: row[0] as string,
@@ -603,10 +603,10 @@ export class DuckDBKnowledgeGraphManager
     }
 
     try {
-      // プレースホルダーを作成
+      // Create placeholders
       const placeholders = names.map(() => "?").join(",");
 
-      // LEFT JOINを使用してエンティティと観察を一度に取得
+      // Retrieve entities and observations at once using LEFT JOIN
       const reader = await this.conn.runAndReadAll(
         `
         SELECT e.name, e.entityType, o.content
@@ -618,7 +618,7 @@ export class DuckDBKnowledgeGraphManager
       );
       const rows = reader.getRows();
 
-      // 結果をエンティティごとにグループ化
+      // Group results by entity
       const entitiesMap = new Map<string, Entity>();
 
       for (const row of rows) {
@@ -627,24 +627,24 @@ export class DuckDBKnowledgeGraphManager
         const content = row[2] as string | null;
 
         if (!entitiesMap.has(name)) {
-          // 新しいエンティティを作成
+          // Create a new entity
           entitiesMap.set(name, {
             name,
             entityType,
             observations: content ? [content] : [],
           });
         } else if (content) {
-          // 既存のエンティティに観察を追加
+          // Add observation to existing entity
           entitiesMap.get(name)!.observations.push(content);
         }
       }
 
       const entities = Array.from(entitiesMap.values());
 
-      // エンティティ名のセットを作成
+      // Create a set of entity names
       const entityNames = entities.map((entity) => entity.name);
 
-      // 関連するリレーションを取得
+      // Get related relations
       if (entityNames.length > 0) {
         const placeholders = entityNames.map(() => "?").join(",");
         const relationsReader = await this.conn.runAndReadAll(
@@ -658,7 +658,7 @@ export class DuckDBKnowledgeGraphManager
         );
         const relationsData = relationsReader.getRows();
 
-        // 結果をRelationオブジェクトの配列に変換
+        // Convert results to an array of Relation objects
         const relations = relationsData.map((row) => {
           return {
             from: row[0] as string,
