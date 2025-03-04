@@ -7,8 +7,7 @@
   "scripts": {
     "build": "tsup src/index.ts && shx chmod +x dist/index.mjs",
     "prepare": "npm run build",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "vitest run"
   },
   "bin": {
     "mcp-duckdb-memory-server": "dist/index.mjs"
@@ -37,5 +36,8 @@
     "tsup": "^8.4.0",
     "typescript": "^5.7.3",
     "vitest": "^3.0.7"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }
