@@ -26,6 +26,7 @@
   "author": "IzumiSy",
   "license": "MIT",
   "dependencies": {
+    "@duckdb/node-api": "1.2.0-alpha.15",
     "@modelcontextprotocol/sdk": "^1.6.0",
     "@types/lowdb": "^1.0.15",
     "fuse.js": "^7.1.0",

@@ -5,12 +5,13 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { toolsSchema } from "./toolsSchema";
-import { LowDBFuseKnowledgeGraphManager } from "./adapters/lowdb-fuse";
+import { DuckDBFuseKnowledgeGraphManager } from "./adapters/duckdb-fuse";
 import { Entity, Observation, Relation } from "./types";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { join, dirname } from "path";
 import { homedir } from "os";
 import { existsSync, mkdirSync } from "fs";
+import { LowDBFuseKnowledgeGraphManager } from "./adapters/lowdb-fuse";
 
 const server = new Server(
   {
