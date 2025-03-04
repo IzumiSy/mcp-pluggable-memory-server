@@ -121,48 +121,36 @@ export class DuckDBFuseKnowledgeGraphManager
    */
   private async getAllEntities(): Promise<Entity[]> {
     try {
-      const entitiesReader = await this.conn.runAndReadAll(
-        `SELECT name, entityType FROM entities`
-      );
-      const entitiesData = entitiesReader.getRows();
+      // LEFT JOINを使用してエンティティと観察を一度に取得
+      const reader = await this.conn.runAndReadAll(`
+        SELECT e.name, e.entityType, o.content
+        FROM entities e
+        LEFT JOIN observations o ON e.name = o.entityName
+      `);
+      const rows = reader.getRows();
 
-      // 結果をオブジェクトの配列に変換
-      const entitiesResult = entitiesData.map((row) => {
-        return {
-          name: row[0] as string,
-          entityType: row[1] as string,
-          observations: [] as string[],
-        };
-      });
+      // 結果をエンティティごとにグループ化
+      const entitiesMap = new Map<string, Entity>();
 
-      const entities: Entity[] = [];
-      for (const entity of entitiesResult) {
-        try {
-          const observationsReader = await this.conn.runAndReadAll(
-            `SELECT content FROM observations WHERE entityName = ?`,
-            [entity.name as string]
-          );
-          const observationsData = observationsReader.getRows();
+      for (const row of rows) {
+        const name = row[0] as string;
+        const entityType = row[1] as string;
+        const content = row[2] as string | null;
 
-          // 観察結果を配列に変換
-          const observations = observationsData.map((row) => row[0] as string);
-
-          entities.push({
-            name: entity.name as string,
-            entityType: entity.entityType as string,
-            observations,
+        if (!entitiesMap.has(name)) {
+          // 新しいエンティティを作成
+          entitiesMap.set(name, {
+            name,
+            entityType,
+            observations: content ? [content] : [],
           });
-        } catch (error) {
-          // 観察の取得に失敗した場合は空の配列を使用
-          entities.push({
-            name: entity.name as string,
-            entityType: entity.entityType as string,
-            observations: [],
-          });
+        } else if (content) {
+          // 既存のエンティティに観察を追加
+          entitiesMap.get(name)!.observations.push(content);
         }
       }
 
-      return entities;
+      return Array.from(entitiesMap.values());
     } catch (error) {
       console.error("Error getting all entities:", error);
       return [];
@@ -618,42 +606,40 @@ export class DuckDBFuseKnowledgeGraphManager
       // プレースホルダーを作成
       const placeholders = names.map(() => "?").join(",");
 
-      // エンティティを取得
-      const entitiesReader = await this.conn.runAndReadAll(
-        `SELECT name, entityType FROM entities WHERE name IN (${placeholders})`,
+      // LEFT JOINを使用してエンティティと観察を一度に取得
+      const reader = await this.conn.runAndReadAll(
+        `
+        SELECT e.name, e.entityType, o.content
+        FROM entities e
+        LEFT JOIN observations o ON e.name = o.entityName
+        WHERE e.name IN (${placeholders})
+      `,
         names
       );
-      const entitiesData = entitiesReader.getRows();
+      const rows = reader.getRows();
 
-      // 結果をオブジェクトの配列に変換
-      const entityRows = entitiesData.map((row) => {
-        return {
-          name: row[0] as string,
-          entityType: row[1] as string,
-        };
-      });
+      // 結果をエンティティごとにグループ化
+      const entitiesMap = new Map<string, Entity>();
 
-      // エンティティと観察を結合
-      const entities: Entity[] = [];
-      for (const entity of entityRows) {
-        const observationsReader = await this.conn.runAndReadAll(
-          "SELECT content FROM observations WHERE entityName = ?",
-          [entity.name as string]
-        );
-        const observationsData = observationsReader.getRows();
-        const contentColumnIndex = 0; // content列は最初の列
+      for (const row of rows) {
+        const name = row[0] as string;
+        const entityType = row[1] as string;
+        const content = row[2] as string | null;
 
-        // 観察結果を配列に変換
-        const observations = observationsData.map(
-          (row) => row[contentColumnIndex] as string
-        );
-
-        entities.push({
-          name: entity.name as string,
-          entityType: entity.entityType as string,
-          observations,
-        });
+        if (!entitiesMap.has(name)) {
+          // 新しいエンティティを作成
+          entitiesMap.set(name, {
+            name,
+            entityType,
+            observations: content ? [content] : [],
+          });
+        } else if (content) {
+          // 既存のエンティティに観察を追加
+          entitiesMap.get(name)!.observations.push(content);
+        }
       }
+
+      const entities = Array.from(entitiesMap.values());
 
       // エンティティ名のセットを作成
       const entityNames = entities.map((entity) => entity.name);
