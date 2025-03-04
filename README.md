@@ -1,12 +1,21 @@
 # MCP DuckDB Knowledge Graph Memory Server
 
 [![Test](https://github.com/izumisy/mcp-duckdb-memory-server/actions/workflows/test.yml/badge.svg)](https://github.com/izumisy/mcp-duckdb-memory-server/actions/workflows/test.yml)
+[![smithery badge](https://smithery.ai/badge/@IzumiSy/mcp-duckdb-memory-server)](https://smithery.ai/server/@IzumiSy/mcp-duckdb-memory-server)
 
 A forked version of [the official Knowledge Graph Memory Server](https://github.com/modelcontextprotocol/servers/tree/main/src/memory).
 
 ## Usage
 
 Install MCP server
+
+### Installing via Smithery
+
+To install DuckDB Knowledge Graph Memory Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@IzumiSy/mcp-duckdb-memory-server):
+
+```bash
+npx -y @smithery/cli install @IzumiSy/mcp-duckdb-memory-server --client claude
+```
 
 ### Example instruction
 
