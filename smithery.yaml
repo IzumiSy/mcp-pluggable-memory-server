@@ -1,0 +1,30 @@
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+
+startCommand:
+  type: stdio
+  configSchema:
+    # JSON Schema defining the configuration options for the MCP.
+    type: object
+    properties:
+      memoryFilePath:
+        type: string
+        description: Optional path for the DuckDB memory file. If not provided, a
+          default location will be used.
+    description: Optional configuration for the DuckDB Memory Server.
+  commandFunction:
+    # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
+    |-
+    (config) => {
+      // Base command to run the server
+      const command = 'node';
+      const args = ['dist/index.mjs'];
+
+      // Set environment variable if memoryFilePath provided
+      const env = {};
+      if(config.memoryFilePath) {
+        env.MEMORY_FILE_PATH = config.memoryFilePath;
+      }
+      return { command, args, env };
+    }
+  exampleConfig:
+    memoryFilePath: /tmp/duckdb-memory.data
