@@ -1,5 +1,11 @@
 # @izumisy/mcp-duckdb-memory-server
 
+## 1.1.1
+
+### Patch Changes
+
+- Fix README
+
 ## 1.1.0
 
 ### Minor Changes

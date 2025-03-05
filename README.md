@@ -28,7 +28,7 @@ Otherwise, add `@IzumiSy/mcp-duckdb-memory-server` in your `claude_desktop_confi
       "command": "npx",
       "args": [
         "-y",
-        "@IzumiSy/mcp-duckdb-memory-server"
+        "@izumisy/mcp-duckdb-memory-server"
       ],
       "env": {
         "MEMORY_FILE_PATH": "/path/to/your/memory.data"
