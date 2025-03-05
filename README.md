@@ -5,9 +5,7 @@
 
 A forked version of [the official Knowledge Graph Memory Server](https://github.com/modelcontextprotocol/servers/tree/main/src/memory).
 
-## Usage
-
-Install MCP server
+## Installation
 
 ### Installing via Smithery
 
@@ -17,7 +15,46 @@ To install DuckDB Knowledge Graph Memory Server for Claude Desktop automatically
 npx -y @smithery/cli install @IzumiSy/mcp-duckdb-memory-server --client claude
 ```
 
-### Example instruction
+### Manual install
+
+Otherwise, add `@IzumiSy/mcp-duckdb-memory-server` in your `claude_desktop_config.json` manually (`MEMORY_FILE_PATH` is optional)
+
+```bash
+{
+  "mcpServers": {
+    "graph-memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@IzumiSy/mcp-duckdb-memory-server"
+      ],
+      "env": {
+        "MEMORY_FILE_PATH": "/path/to/your/memory.data"
+      }
+    }
+  }
+}
+```
+
+The data stored on that path is a DuckDB database file.
+
+### Docker
+
+Build
+
+```bash
+docker build -t mcp-duckdb-graph-memory .
+```
+
+Run
+
+```bash
+docker run -dit mcp-duckdb-graph-memory
+```
+
+## Usage
+
+Use the example instruction below
 
 ```
 Follow these steps for each interaction:
