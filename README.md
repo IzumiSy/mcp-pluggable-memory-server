@@ -7,6 +7,10 @@
 
 A forked version of [the official Knowledge Graph Memory Server](https://github.com/modelcontextprotocol/servers/tree/main/src/memory).
 
+<a href="https://glama.ai/mcp/servers/4mqwh1toao">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/4mqwh1toao/badge" alt="DuckDB Knowledge Graph Memory Server MCP server" />
+</a>
+
 ## Installation
 
 ### Installing via Smithery
