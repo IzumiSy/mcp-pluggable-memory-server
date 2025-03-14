@@ -81,45 +81,25 @@ export class ConsoleLogger implements Logger {
 
   debug(message: string, payload?: Record<string, unknown>): void {
     if (this.shouldLog(LogLevel.DEBUG)) {
-      console.debug(
-        JSON.stringify({
-          message,
-          payload,
-        })
-      );
+      console.debug(message, payload);
     }
   }
 
   info(message: string, payload?: Record<string, unknown>): void {
     if (this.shouldLog(LogLevel.INFO)) {
-      console.info(
-        JSON.stringify({
-          message,
-          payload,
-        })
-      );
+      console.info(message, payload);
     }
   }
 
   warn(message: string, payload?: Record<string, unknown>): void {
     if (this.shouldLog(LogLevel.WARN)) {
-      console.warn(
-        JSON.stringify({
-          message,
-          payload,
-        })
-      );
+      console.warn(message, payload);
     }
   }
 
   error(message: string, payload?: Record<string, unknown>): void {
     if (this.shouldLog(LogLevel.ERROR)) {
-      console.error(
-        JSON.stringify({
-          message,
-          payload,
-        })
-      );
+      console.error(message, payload);
     }
   }
 
