@@ -39,6 +39,29 @@ export interface LogData {
   payload?: Record<string, unknown>;
 }
 
+// Nullロガー
+export class NullLogger implements Logger {
+  debug(message: string, payload?: Record<string, unknown>): void {
+    // No-op
+  }
+
+  info(message: string, payload?: Record<string, unknown>): void {
+    // No-op
+  }
+
+  warn(message: string, payload?: Record<string, unknown>): void {
+    // No-op
+  }
+
+  error(message: string, payload?: Record<string, unknown>): void {
+    // No-op
+  }
+
+  setLevel(level: LogLevel): void {
+    // No-op
+  }
+}
+
 // 抽象ロガーインターフェース
 export interface Logger {
   debug(message: string, payload?: Record<string, unknown>): void;
@@ -46,70 +69,6 @@ export interface Logger {
   warn(message: string, payload?: Record<string, unknown>): void;
   error(message: string, payload?: Record<string, unknown>): void;
   setLevel(level: LogLevel): void;
-}
-
-// MCPロガーアダプタ
-export class McpLoggerAdapter implements Logger {
-  private server: Server;
-  private level: LogLevel = LogLevel.INFO;
-
-  constructor(server: Server) {
-    this.server = server;
-  }
-
-  setLevel(level: LogLevel): void {
-    this.level = level;
-  }
-
-  debug(message: string, payload?: Record<string, unknown>): void {
-    if (this.shouldLog(LogLevel.DEBUG)) {
-      this.log(LogLevel.DEBUG, message, payload);
-    }
-  }
-
-  info(message: string, payload?: Record<string, unknown>): void {
-    if (this.shouldLog(LogLevel.INFO)) {
-      this.log(LogLevel.INFO, message, payload);
-    }
-  }
-
-  warn(message: string, payload?: Record<string, unknown>): void {
-    if (this.shouldLog(LogLevel.WARN)) {
-      this.log(LogLevel.WARN, message, payload);
-    }
-  }
-
-  error(message: string, payload?: Record<string, unknown>): void {
-    if (this.shouldLog(LogLevel.ERROR)) {
-      this.log(LogLevel.ERROR, message, payload);
-    }
-  }
-
-  private shouldLog(messageLevel: LogLevel): boolean {
-    const levels = [
-      LogLevel.DEBUG,
-      LogLevel.INFO,
-      LogLevel.WARN,
-      LogLevel.ERROR,
-    ];
-    return levels.indexOf(messageLevel) >= levels.indexOf(this.level);
-  }
-
-  private log(
-    level: LogLevel,
-    message: string,
-    payload?: Record<string, unknown>
-  ): void {
-    const logData: LogData = {
-      message,
-      ...(payload && { payload }),
-    };
-
-    this.server.sendLoggingMessage({
-      level: logLevelToMcpLogLevel[level],
-      data: logData,
-    });
-  }
 }
 
 // コンソールロガー（デフォルト実装として）

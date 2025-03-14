@@ -17,6 +17,9 @@ importers:
       fuse.js:
         specifier: ^7.1.0
         version: 7.1.0
+      zod:
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@changesets/cli':
         specifier: ^2.28.1

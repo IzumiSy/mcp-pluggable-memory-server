@@ -1,6 +1,6 @@
 {
   "name": "@izumisy/mcp-duckdb-memory-server",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "private": false,
   "description": "MCP Memory Server with DuckDB backend",
   "homepage": "https://github.com/IzumiSy/mcp-duckdb-memory-server",
@@ -11,6 +11,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
+    "dev": "pnpm build && npx @modelcontextprotocol/inspector pnpm start",
     "build": "tsup src/index.ts && shx chmod +x dist/index.mjs",
     "start": "node dist/index.mjs",
     "prepare": "npm run build",
@@ -34,7 +35,8 @@
   "dependencies": {
     "@duckdb/node-api": "1.2.0-alpha.15",
     "@modelcontextprotocol/sdk": "^1.6.0",
-    "fuse.js": "^7.1.0"
+    "fuse.js": "^7.1.0",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@changesets/cli": "^2.28.1",
