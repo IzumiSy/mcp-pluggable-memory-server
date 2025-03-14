@@ -49,6 +49,7 @@ const knowledgeGraphManager = new DuckDBKnowledgeGraphManager(
 // Create entities tool
 server.tool(
   "create_entities",
+  "Create multiple new entities in the knowledge graph",
   {
     entities: z.array(EntityObject),
   },
@@ -69,6 +70,7 @@ server.tool(
 // Create relations tool
 server.tool(
   "create_relations",
+  "Create multiple new relations between entities in the knowledge graph. Relations should be in active voice",
   {
     relations: z.array(RelationObject),
   },
@@ -89,6 +91,7 @@ server.tool(
 // Add observations tool
 server.tool(
   "add_observations",
+  "Add new observations to existing entities in the knowledge graph",
   {
     observations: z.array(ObservationObject),
   },
@@ -109,6 +112,7 @@ server.tool(
 // Delete entities tool
 server.tool(
   "delete_entities",
+  "Delete multiple entities and their associated relations from the knowledge graph",
   {
     entityNames: z
       .array(z.string())
@@ -125,6 +129,7 @@ server.tool(
 // Delete observations tool
 server.tool(
   "delete_observations",
+  "Delete specific observations from entities in the knowledge graph",
   {
     deletions: z.array(
       z.object({
@@ -148,6 +153,7 @@ server.tool(
 // Delete relations tool
 server.tool(
   "delete_relations",
+  "Delete multiple relations from the knowledge graph",
   {
     relations: z
       .array(
@@ -174,6 +180,7 @@ server.tool(
 // Search nodes tool
 server.tool(
   "search_nodes",
+  "Search for nodes in the knowledge graph based on a query",
   {
     query: z
       .string()
@@ -198,6 +205,7 @@ server.tool(
 // Open nodes tool
 server.tool(
   "open_nodes",
+  "Open specific nodes in the knowledge graph by their names",
   {
     names: z.array(z.string()).describe("An array of entity names to retrieve"),
   },
