@@ -3,12 +3,11 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { DuckDBKnowledgeGraphManager } from "./manager";
-import { McpLoggerAdapter, stringToLogLevel } from "./logger";
+import { NullLogger } from "./logger";
 import { join, dirname } from "path";
 import { homedir } from "os";
 import { existsSync, mkdirSync } from "fs";
 import { EntityObject, ObservationObject, RelationObject } from "./types";
-import { SetLevelRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 
 // Create an MCP server
 const server = new McpServer({
@@ -16,7 +15,7 @@ const server = new McpServer({
   version: "1.1.2",
 });
 
-const logger = new McpLoggerAdapter(server.server);
+const logger = new NullLogger();
 const knowledgeGraphManager = new DuckDBKnowledgeGraphManager(
   /**
    * Get the database file path based on environment variables or default location
@@ -46,12 +45,6 @@ const knowledgeGraphManager = new DuckDBKnowledgeGraphManager(
   },
   logger
 );
-
-server.server.setRequestHandler(SetLevelRequestSchema, async (request) => {
-  const { level } = request.params;
-  logger.setLevel(stringToLogLevel(level));
-  return {};
-});
 
 // Create entities tool
 server.tool(
