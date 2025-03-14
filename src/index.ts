@@ -13,7 +13,7 @@ import { SetLevelRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 // Create an MCP server
 const server = new McpServer({
   name: "duckdb-memory-server",
-  version: "1.0.0",
+  version: "1.1.2",
 });
 
 const logger = new McpLoggerAdapter(server.server);
