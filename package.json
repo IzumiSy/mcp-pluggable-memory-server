@@ -11,7 +11,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "dev": "npx @modelcontextprotocol/inspector pnpm start",
+    "dev": "pnpm build && npx @modelcontextprotocol/inspector pnpm start",
     "build": "tsup src/index.ts && shx chmod +x dist/index.mjs",
     "start": "node dist/index.mjs",
     "prepare": "npm run build",
