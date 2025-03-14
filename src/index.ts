@@ -4,7 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { DuckDBKnowledgeGraphManager } from "./manager";
 import { Entity, Observation, Relation } from "./types";
-import { ConsoleLogger } from "./logger";
+import { ConsoleLogger, McpLoggerAdapter } from "./logger";
 import { join, dirname } from "path";
 import { homedir } from "os";
 import { existsSync, mkdirSync } from "fs";
@@ -15,7 +15,7 @@ const server = new McpServer({
   version: "1.0.0",
 });
 
-const logger = new ConsoleLogger();
+const logger = new McpLoggerAdapter(server.server);
 const knowledgeGraphManager = new DuckDBKnowledgeGraphManager(
   /**
    * Get the database file path based on environment variables or default location
