@@ -1,6 +1,6 @@
 {
   "name": "@izumisy/mcp-duckdb-memory-server",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "private": false,
   "description": "MCP Memory Server with DuckDB backend",
   "homepage": "https://github.com/IzumiSy/mcp-duckdb-memory-server",
