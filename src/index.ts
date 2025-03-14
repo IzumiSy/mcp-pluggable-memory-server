@@ -3,11 +3,11 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { DuckDBKnowledgeGraphManager } from "./manager";
-import { Entity, Observation, Relation } from "./types";
-import { ConsoleLogger, McpLoggerAdapter } from "./logger";
+import { McpLoggerAdapter } from "./logger";
 import { join, dirname } from "path";
 import { homedir } from "os";
 import { existsSync, mkdirSync } from "fs";
+import { EntityObject, ObservationObject, RelationObject } from "./types";
 
 // Create an MCP server
 const server = new McpServer({
@@ -50,17 +50,7 @@ const knowledgeGraphManager = new DuckDBKnowledgeGraphManager(
 server.tool(
   "create_entities",
   {
-    entities: z.array(
-      z.object({
-        name: z.string().describe("The name of the entity"),
-        entityType: z.string().describe("The type of the entity"),
-        observations: z
-          .array(z.string())
-          .describe(
-            "An array of observation contents associated with the entity"
-          ),
-      })
-    ),
+    entities: z.array(EntityObject),
   },
   async ({ entities }) => ({
     content: [
@@ -80,17 +70,7 @@ server.tool(
 server.tool(
   "create_relations",
   {
-    relations: z.array(
-      z.object({
-        from: z
-          .string()
-          .describe("The name of the entity where the relation starts"),
-        to: z
-          .string()
-          .describe("The name of the entity where the relation ends"),
-        relationType: z.string().describe("The type of the relation"),
-      })
-    ),
+    relations: z.array(RelationObject),
   },
   async ({ relations }) => ({
     content: [
@@ -110,16 +90,7 @@ server.tool(
 server.tool(
   "add_observations",
   {
-    observations: z.array(
-      z.object({
-        entityName: z
-          .string()
-          .describe("The name of the entity to add the observations to"),
-        contents: z
-          .array(z.string())
-          .describe("An array of observation contents to add"),
-      })
-    ),
+    observations: z.array(ObservationObject),
   },
   async ({ observations }) => ({
     content: [

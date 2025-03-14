@@ -1,17 +1,27 @@
+import { z } from "zod";
+
 /**
  * The primary nodes in the knowledge graph
  */
-export type Entity = {
-  name: string;
-  entityType: string;
-  observations: string[];
-};
+export const EntityObject = z.object({
+  name: z.string().describe("The name of the entity"),
+  entityType: z.string().describe("The type of the entity"),
+  observations: z
+    .array(z.string())
+    .describe("An array of observation contents associated with the entity"),
+});
+export type Entity = z.infer<typeof EntityObject>;
 
 /**
  * Relations define directed connections between entities.
  *
  * They are always stored in active voice and describe how entities interact or relate to each other
  */
+export const RelationObject = z.object({
+  from: z.string().describe("The name of the entity where the relation starts"),
+  to: z.string().describe("The name of the entity where the relation ends"),
+  relationType: z.string().describe("The type of the relation"),
+});
 export type Relation = {
   from: string;
   to: string;
@@ -21,10 +31,15 @@ export type Relation = {
 /**
  * Observations are discrete pieces of information about an entity
  */
-export type Observation = {
-  entityName: string;
-  contents: string[];
-};
+export const ObservationObject = z.object({
+  entityName: z
+    .string()
+    .describe("The name of the entity to add the observations to"),
+  contents: z
+    .array(z.string())
+    .describe("An array of observation contents to add"),
+});
+export type Observation = z.infer<typeof ObservationObject>;
 
 /**
  * The knowledge graph is the primary data structure for storing information in the system
