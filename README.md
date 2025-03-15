@@ -122,12 +122,12 @@ The core architecture focuses on the relationship between AI tools, MCP Server, 
 flowchart TD
     subgraph "AI Tools"
         Claude[Claude AI]
-        Cline[Cline AI]
+        Cline[Cline]
     end
     
     subgraph "MCP Servers"
-        MCP1[MCP Server 1]
-        MCP2[MCP Server 2]
+        MCP1[MCP Server]
+        MCP2[MCP Server]
     end
     
     subgraph "Database Layer"
