@@ -119,7 +119,7 @@ This implementation uses DuckDB as the backend storage system, with a modular ar
 The core architecture focuses on the relationship between AI tools, MCP Server, and DB Server:
 
 ```mermaid
-flowchart LR
+flowchart TD
     subgraph "AI Tools"
         Claude[Claude AI]
         Cline[Cline AI]
@@ -131,15 +131,15 @@ flowchart LR
     end
     
     subgraph "Database Layer"
-        DB[DB Server (Single connection)]
+        DB[DB Server]
         DuckDB[DuckDB]
     end
     
     Claude <--> MCP1
     Cline <--> MCP2
     
-    MCP1 --> DB
-    MCP2 --> DB
+    MCP1 --> |Unix-domain socket|DB
+    MCP2 --> |Unix-domain socket|DB
     
     DB <--> DuckDB
     
