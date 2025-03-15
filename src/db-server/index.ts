@@ -170,7 +170,6 @@ server.post("/rpc", async (request, reply) => {
     });
   } catch (error) {
     // エラーレスポンス
-    server.log.error(error);
     return reply.send(
       createErrorResponse(
         rpcRequest.id,
@@ -185,9 +184,7 @@ server.post("/rpc", async (request, reply) => {
 const start = async () => {
   try {
     await server.listen({ path: SOCKET_PATH });
-    console.log(`DB Server (JSON-RPC) listening on ${SOCKET_PATH}`);
   } catch (err) {
-    server.log.error(err);
     process.exit(1);
   }
 };
