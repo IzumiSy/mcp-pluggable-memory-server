@@ -4,12 +4,12 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { join } from "path";
 import { homedir } from "os";
-import { defaultSocketPath, KnowledgeGraphClient } from "./client";
+import { defaultSocketPath, KnowledgeGraphClient } from "../client";
 import {
   EntityObject,
   ObservationObject,
   RelationObject,
-} from "./db-server/types";
+} from "../db-server/types";
 
 // Create an MCP server
 const server = new McpServer({

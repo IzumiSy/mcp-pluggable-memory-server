@@ -12,7 +12,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "pnpm build && npx @modelcontextprotocol/inspector pnpm start",
-    "build": "tsup && shx chmod +x dist/index.mjs dist/db-server/index.mjs dist/launcher/index.mjs",
+    "build": "tsup && shx chmod +x dist/client/index.mjs dist/db-server/index.mjs dist/launcher/index.mjs",
     "start": "node dist/launcher/index.mjs",
     "prepare": "npm run build",
     "test": "vitest run",
