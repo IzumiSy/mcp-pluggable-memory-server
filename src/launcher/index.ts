@@ -84,7 +84,7 @@ const startDbServer = () => {
   };
 
   // DBサーバーのパス
-  const dbServerPath = new URL("./db-server/index.mjs", import.meta.url)
+  const dbServerPath = new URL("../db-server/index.mjs", import.meta.url)
     .pathname;
 
   // DBサーバーをサブプロセスとして起動
@@ -118,7 +118,7 @@ const startMcpServer = () => {
   };
 
   // MCPサーバーのパス
-  const mcpServerPath = new URL("./index.mjs", import.meta.url).pathname;
+  const mcpServerPath = new URL("../index.mjs", import.meta.url).pathname;
 
   // MCPサーバーをサブプロセスとして起動
   const mcpProcess = spawn("node", [mcpServerPath], {
