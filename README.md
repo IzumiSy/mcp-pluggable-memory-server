@@ -116,74 +116,61 @@ This implementation uses DuckDB as the backend storage system, with a modular ar
 
 ### System Architecture
 
-The system is composed of several key components that work together:
+The core architecture focuses on the relationship between AI tools, MCP Server, and DB Server:
 
 ```mermaid
-flowchart TB
-    subgraph "MCP Interface"
-        MCP[MCP Server\nsrc/index.ts]
+flowchart LR
+    subgraph "AI Tools"
+        Claude[Claude AI]
+        Cline[Cline AI]
+    end
+    
+    subgraph "MCP Servers"
+        MCP1[MCP Server 1]
+        MCP2[MCP Server 2]
     end
     
     subgraph "Database Layer"
-        DB[DB Server\nsrc/db-server/index.ts]
+        DB[DB Server\n<b>Single Connection Manager</b>]
         DuckDB[(DuckDB\nDatabase)]
     end
     
-    subgraph "Client Layer"
-        Client[Knowledge Graph Client\nsrc/client.ts]
-    end
+    Claude <--> MCP1
+    Cline <--> MCP2
     
-    subgraph "Process Management"
-        Launcher[Launcher\nsrc/launcher/index.ts]
-        PIDManager[PID Manager\nsrc/launcher/pid.ts]
-    end
+    MCP1 --> DB
+    MCP2 --> DB
     
-    Claude[Claude or other AI] --> MCP
-    MCP <--> Client
-    Client <--> DB
     DB <--> DuckDB
     
-    Launcher --> MCP
-    Launcher --> DB
-    Launcher <--> PIDManager
+    %% Annotations
+    classDef ai fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef server fill:#bbf,stroke:#333,stroke-width:1px;
+    classDef db fill:#bfb,stroke:#333,stroke-width:1px;
     
-    %% Connection management
-    PIDManager -- "Manages socket\nfile lifecycle" --> DB
-    
-    %% Data flow
-    Claude -- "Knowledge Graph\nOperations" --> MCP
-    MCP -- "JSON-RPC\nRequests" --> Client
-    Client -- "JSON-RPC over\nUnix Socket" --> DB
-    DB -- "SQL Queries" --> DuckDB
-    
-    classDef primary fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef secondary fill:#bbf,stroke:#333,stroke-width:1px;
-    classDef storage fill:#bfb,stroke:#333,stroke-width:1px;
-    
-    class MCP,DB primary;
-    class Client,Launcher,PIDManager secondary;
-    class DuckDB storage;
+    class Claude,Cline ai;
+    class MCP1,MCP2 server;
+    class DB,DuckDB db;
 ```
 
-The architecture follows these principles:
+**Key architectural considerations:**
 
-1. **Separation of Concerns**: Each component has a specific responsibility
-   - MCP Server: Handles MCP protocol communication with Claude
-   - DB Server: Manages database operations and JSON-RPC interface
-   - Launcher: Coordinates process lifecycle and startup
-   - PID Manager: Ensures proper socket file cleanup across multiple processes
+1. **DuckDB Single Connection Limitation**: DuckDB only allows a single connection for read-write operations. This is a critical constraint that shapes the architecture:
+   - The DB Server acts as a connection manager that serializes all database operations
+   - Multiple MCP Servers connect to a single DB Server
+   - The DB Server ensures only one connection is active with DuckDB at any time
 
-2. **Process Isolation**: The DB server runs as a separate process for stability
-   - Multiple MCP servers can connect to a single DB server
-   - Socket file is only cleaned up when all connected processes terminate
-   - PID tracking prevents resource leaks and connection issues
+2. **Communication Flow**:
+   - AI tools (like Claude and Cline) communicate with MCP Servers using the MCP protocol
+   - MCP Servers forward requests to the DB Server using JSON-RPC over Unix socket
+   - The DB Server executes SQL queries against DuckDB and returns results
 
-3. **Communication Protocols**:
-   - MCP protocol between Claude and the MCP server
-   - JSON-RPC over Unix socket between client and DB server
-   - SQL for database operations
+3. **Process Isolation**:
+   - The DB Server runs as a separate process for stability
+   - Multiple AI instances can connect through different MCP Servers
+   - All database operations are funneled through the single DB Server
 
-This architecture ensures reliability, performance, and proper resource management even with multiple concurrent connections.
+This architecture elegantly solves DuckDB's single-connection limitation while allowing multiple AI tools to interact with the knowledge graph simultaneously.
 
 ### Database Structure
 
