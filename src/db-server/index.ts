@@ -19,9 +19,7 @@ if (!existsSync(socketDir)) {
 }
 
 // Fastifyインスタンスの作成
-const server = Fastify({
-  logger: true,
-});
+const server = Fastify();
 
 // ロガーの設定
 const logger = new NullLogger();
