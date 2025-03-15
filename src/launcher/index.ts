@@ -23,7 +23,6 @@ const MEMORY_FILE_PATH =
 // ソケットファイルの削除を行う共通関数（起動時用）
 const cleanupSocketFile = () => {
   if (existsSync(SOCKET_PATH)) {
-    console.log(`Cleaning up socket file: ${SOCKET_PATH}`);
     unlinkSync(SOCKET_PATH);
   }
 };
@@ -71,8 +70,6 @@ const checkDbServerHealth = async (client: Client) => {
 
 // DBサーバーの起動
 const startDbServer = () => {
-  console.log("Starting DB server...");
-
   // 既存のソケットファイルを削除（前回の異常終了時に残っている可能性）
   cleanupSocketFile();
 
@@ -95,11 +92,7 @@ const startDbServer = () => {
 
   // エラーハンドリング
   dbProcess.on("error", async (err) => {
-    console.error("Failed to start DB server:", err);
-
-    // DBサーバー起動エラー時もPIDリストから自身を削除
     await removePid(SOCKET_PATH);
-
     process.exit(1);
   });
 
@@ -108,9 +101,6 @@ const startDbServer = () => {
 
 // MCPサーバーの起動
 const startMcpServer = () => {
-  console.log("Starting MCP server...");
-
-  // 環境変数の設定
   const env = {
     ...process.env,
     SOCKET_PATH,
@@ -128,11 +118,7 @@ const startMcpServer = () => {
 
   // エラーハンドリング
   mcpProcess.on("error", async (err) => {
-    console.error("Failed to start MCP server:", err);
-
-    // MCPサーバー起動エラー時もPIDリストから自身を削除
     await removePid(SOCKET_PATH);
-
     process.exit(1);
   });
 
@@ -185,7 +171,6 @@ const main = async () => {
     // DBサーバーの起動を待つ（ポーリング）
     const isStarted = await waitForDbServer(client);
     if (!isStarted) {
-      console.error("DB server failed to start after multiple attempts");
       if (dbProcess) {
         dbProcess.kill();
       }
@@ -195,10 +180,6 @@ const main = async () => {
 
       process.exit(1);
     }
-
-    console.log("DB server started successfully");
-  } else {
-    console.log("DB server is already running");
   }
 
   // MCPサーバーを起動
@@ -206,15 +187,13 @@ const main = async () => {
 
   // シグナルハンドリング
   const cleanup = async () => {
-    console.log("Shutting down...");
     if (dbProcess) {
       dbProcess.kill();
     }
+
     mcpProcess.kill();
 
-    // PIDリストから自身を削除し、必要に応じてソケットファイルを削除
     await removePid(SOCKET_PATH);
-
     process.exit(0);
   };
 
@@ -223,24 +202,17 @@ const main = async () => {
 
   // MCPサーバーが終了したら、DBサーバーも終了（自分で起動した場合のみ）
   mcpProcess.on("exit", async (code) => {
-    console.log(`MCP server exited with code ${code}`);
     if (dbProcess) {
       dbProcess.kill();
     }
 
-    // PIDリストから自身を削除し、必要に応じてソケットファイルを削除
     await removePid(SOCKET_PATH);
-
     process.exit(code || 0);
   });
 };
 
 // 実行
 main().catch(async (err) => {
-  console.error("Launcher error:", err);
-
-  // エラー時もPIDリストから自身を削除し、必要に応じてソケットファイルを削除
   await removePid(SOCKET_PATH);
-
   process.exit(1);
 });

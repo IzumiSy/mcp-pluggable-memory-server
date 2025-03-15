@@ -118,7 +118,6 @@ export async function removePid(socketPath: string): Promise<void> {
 
   // リストが空になった場合のみソケットファイルを削除
   if (pids.length === 0 && existsSync(socketPath)) {
-    console.log(`Cleaning up socket file: ${socketPath}`);
     unlinkSync(socketPath);
   }
 
