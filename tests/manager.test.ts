@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { DuckDBKnowledgeGraphManager } from "../src/manager";
-import { Entity, Relation, Observation } from "../src/types";
+import { DuckDBKnowledgeGraphManager } from "../src/db-server/manager";
+import { Entity, Relation, Observation } from "../src/db-server/types";
 import { join } from "path";
 import { existsSync, unlinkSync } from "fs";
 
