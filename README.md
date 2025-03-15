@@ -112,7 +112,78 @@ DuckDB was chosen to address these challenges:
 
 ## Implementation Details
 
-This implementation uses DuckDB as the backend storage system, focusing on two key aspects:
+This implementation uses DuckDB as the backend storage system, with a modular architecture designed for reliability and performance.
+
+### System Architecture
+
+The system is composed of several key components that work together:
+
+```mermaid
+flowchart TB
+    subgraph "MCP Interface"
+        MCP[MCP Server\nsrc/index.ts]
+    end
+    
+    subgraph "Database Layer"
+        DB[DB Server\nsrc/db-server/index.ts]
+        DuckDB[(DuckDB\nDatabase)]
+    end
+    
+    subgraph "Client Layer"
+        Client[Knowledge Graph Client\nsrc/client.ts]
+    end
+    
+    subgraph "Process Management"
+        Launcher[Launcher\nsrc/launcher/index.ts]
+        PIDManager[PID Manager\nsrc/launcher/pid.ts]
+    end
+    
+    Claude[Claude or other AI] --> MCP
+    MCP <--> Client
+    Client <--> DB
+    DB <--> DuckDB
+    
+    Launcher --> MCP
+    Launcher --> DB
+    Launcher <--> PIDManager
+    
+    %% Connection management
+    PIDManager -- "Manages socket\nfile lifecycle" --> DB
+    
+    %% Data flow
+    Claude -- "Knowledge Graph\nOperations" --> MCP
+    MCP -- "JSON-RPC\nRequests" --> Client
+    Client -- "JSON-RPC over\nUnix Socket" --> DB
+    DB -- "SQL Queries" --> DuckDB
+    
+    classDef primary fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef secondary fill:#bbf,stroke:#333,stroke-width:1px;
+    classDef storage fill:#bfb,stroke:#333,stroke-width:1px;
+    
+    class MCP,DB primary;
+    class Client,Launcher,PIDManager secondary;
+    class DuckDB storage;
+```
+
+The architecture follows these principles:
+
+1. **Separation of Concerns**: Each component has a specific responsibility
+   - MCP Server: Handles MCP protocol communication with Claude
+   - DB Server: Manages database operations and JSON-RPC interface
+   - Launcher: Coordinates process lifecycle and startup
+   - PID Manager: Ensures proper socket file cleanup across multiple processes
+
+2. **Process Isolation**: The DB server runs as a separate process for stability
+   - Multiple MCP servers can connect to a single DB server
+   - Socket file is only cleaned up when all connected processes terminate
+   - PID tracking prevents resource leaks and connection issues
+
+3. **Communication Protocols**:
+   - MCP protocol between Claude and the MCP server
+   - JSON-RPC over Unix socket between client and DB server
+   - SQL for database operations
+
+This architecture ensures reliability, performance, and proper resource management even with multiple concurrent connections.
 
 ### Database Structure
 
