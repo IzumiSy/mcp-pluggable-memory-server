@@ -15,8 +15,6 @@ const PidListSchema = z.object({
   pids: z.array(z.number()),
 });
 
-type PidList = z.infer<typeof PidListSchema>;
-
 /**
  * PIDリストを読み込む関数
  * @returns 接続中のMCPサーバーのPIDリスト
