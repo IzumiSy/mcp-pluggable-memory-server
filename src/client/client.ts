@@ -4,7 +4,7 @@ import {
   Relation,
   Observation,
   KnowledgeGraph,
-} from "./db-server/types";
+} from "../db-server/types";
 import { join } from "path";
 import { homedir } from "os";
 import { Client } from "undici";

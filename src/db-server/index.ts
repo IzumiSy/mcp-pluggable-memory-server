@@ -6,7 +6,7 @@ import { DuckDBKnowledgeGraphManager } from "./manager";
 import { NullLogger } from "./logger";
 import { existsSync, mkdirSync } from "fs";
 import { Entity, Relation, Observation } from "./types";
-import { defaultSocketPath } from "../client";
+import { defaultSocketPath } from "../client/client";
 
 // ソケットファイルのパス
 const SOCKET_PATH = process.env.SOCKET_PATH ?? defaultSocketPath;
