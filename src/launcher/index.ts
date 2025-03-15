@@ -5,7 +5,7 @@ import { homedir } from "os";
 import { existsSync, unlinkSync } from "fs";
 import { Client } from "undici";
 import { addPid, removePid } from "./pid";
-import { defaultSocketPath } from "../client";
+import { defaultSocketPath } from "../client/client";
 
 // 設定
 const SOCKET_PATH = process.env.SOCKET_PATH || defaultSocketPath;
