@@ -2,10 +2,10 @@
 import Fastify from "fastify";
 import { join } from "path";
 import { homedir } from "os";
-import { DuckDBKnowledgeGraphManager } from "../manager";
-import { Logger, ConsoleLogger } from "../logger";
+import { DuckDBKnowledgeGraphManager } from "./manager";
+import { NullLogger } from "./logger";
 import { existsSync, mkdirSync } from "fs";
-import { Entity, Relation, Observation } from "../types";
+import { Entity, Relation, Observation } from "./types";
 
 // ソケットファイルのパス
 const SOCKET_PATH =
@@ -24,7 +24,7 @@ const server = Fastify({
 });
 
 // ロガーの設定
-const logger = new ConsoleLogger();
+const logger = new NullLogger();
 
 // DuckDBマネージャーの初期化
 const knowledgeGraphManager = new DuckDBKnowledgeGraphManager(() => {

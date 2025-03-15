@@ -12,14 +12,14 @@
   "main": "index.js",
   "scripts": {
     "dev": "pnpm build && npx @modelcontextprotocol/inspector pnpm start",
-    "build": "tsup && shx chmod +x dist/index.mjs dist/db-server/index.mjs dist/launcher.mjs",
-    "start": "node dist/launcher.mjs",
+    "build": "tsup && shx chmod +x dist/index.mjs dist/db-server/index.mjs dist/launcher/index.mjs",
+    "start": "node dist/launcher/index.mjs",
     "prepare": "npm run build",
     "test": "vitest run",
     "changeset:publish": "pnpm build && changeset publish"
   },
   "bin": {
-    "mcp-duckdb-memory-server": "dist/launcher.mjs"
+    "mcp-duckdb-memory-server": "dist/launcher/index.mjs"
   },
   "files": [
     "dist"

@@ -4,7 +4,7 @@ import { join } from "path";
 import { homedir } from "os";
 import { existsSync, unlinkSync } from "fs";
 import { Client } from "undici";
-import path from "path";
+import { addPid, removePid } from "./pid";
 
 // 設定
 const SOCKET_PATH =
@@ -20,8 +20,16 @@ const MEMORY_FILE_PATH =
     "knowledge-graph.data"
   );
 
+// ソケットファイルの削除を行う共通関数（起動時用）
+const cleanupSocketFile = () => {
+  if (existsSync(SOCKET_PATH)) {
+    console.log(`Cleaning up socket file: ${SOCKET_PATH}`);
+    unlinkSync(SOCKET_PATH);
+  }
+};
+
 // DBサーバーのヘルスチェック
-async function checkDbServerHealth(client: Client): Promise<boolean> {
+const checkDbServerHealth = async (client: Client) => {
   try {
     // JSON-RPCリクエストを送信
     const { statusCode, body } = await client.request({
@@ -57,19 +65,16 @@ async function checkDbServerHealth(client: Client): Promise<boolean> {
     return false;
   } catch (error) {
     // 接続エラーの場合、サーバーは起動していないと判断
-    console.error("Health check error:", error);
     return false;
   }
-}
+};
 
 // DBサーバーの起動
-function startDbServer(): ChildProcess {
+const startDbServer = () => {
   console.log("Starting DB server...");
 
   // 既存のソケットファイルを削除（前回の異常終了時に残っている可能性）
-  if (existsSync(SOCKET_PATH)) {
-    unlinkSync(SOCKET_PATH);
-  }
+  cleanupSocketFile();
 
   // 環境変数の設定
   const env = {
@@ -89,16 +94,20 @@ function startDbServer(): ChildProcess {
   });
 
   // エラーハンドリング
-  dbProcess.on("error", (err) => {
+  dbProcess.on("error", async (err) => {
     console.error("Failed to start DB server:", err);
+
+    // DBサーバー起動エラー時もPIDリストから自身を削除
+    await removePid(SOCKET_PATH);
+
     process.exit(1);
   });
 
   return dbProcess;
-}
+};
 
 // MCPサーバーの起動
-function startMcpServer(): ChildProcess {
+const startMcpServer = () => {
   console.log("Starting MCP server...");
 
   // 環境変数の設定
@@ -118,13 +127,17 @@ function startMcpServer(): ChildProcess {
   });
 
   // エラーハンドリング
-  mcpProcess.on("error", (err) => {
+  mcpProcess.on("error", async (err) => {
     console.error("Failed to start MCP server:", err);
+
+    // MCPサーバー起動エラー時もPIDリストから自身を削除
+    await removePid(SOCKET_PATH);
+
     process.exit(1);
   });
 
   return mcpProcess;
-}
+};
 
 // ヘルスチェックを一定間隔でポーリング
 async function waitForDbServer(
@@ -146,7 +159,9 @@ async function waitForDbServer(
 }
 
 // メイン関数
-async function main() {
+const main = async () => {
+  // 起動時にPIDを追加
+  await addPid();
   let dbProcess: ChildProcess | null = null;
 
   if (!existsSync(SOCKET_PATH)) {
@@ -154,7 +169,7 @@ async function main() {
     dbProcess = startDbServer();
   }
 
-  // ソケットに接続してヘルスチェック
+  // ヘルスチェックのためソケットに接続
   const client = new Client("http://localhost", {
     socketPath: SOCKET_PATH,
     keepAliveTimeout: 1000,
@@ -174,6 +189,10 @@ async function main() {
       if (dbProcess) {
         dbProcess.kill();
       }
+
+      // DBサーバー起動失敗時もPIDリストから自身を削除
+      await removePid(SOCKET_PATH);
+
       process.exit(1);
     }
 
@@ -186,30 +205,42 @@ async function main() {
   const mcpProcess = startMcpServer();
 
   // シグナルハンドリング
-  const cleanup = () => {
+  const cleanup = async () => {
     console.log("Shutting down...");
     if (dbProcess) {
       dbProcess.kill();
     }
     mcpProcess.kill();
+
+    // PIDリストから自身を削除し、必要に応じてソケットファイルを削除
+    await removePid(SOCKET_PATH);
+
     process.exit(0);
   };
 
-  process.on("SIGINT", cleanup);
-  process.on("SIGTERM", cleanup);
+  process.on("SIGINT", () => cleanup());
+  process.on("SIGTERM", () => cleanup());
 
   // MCPサーバーが終了したら、DBサーバーも終了（自分で起動した場合のみ）
-  mcpProcess.on("exit", (code) => {
+  mcpProcess.on("exit", async (code) => {
     console.log(`MCP server exited with code ${code}`);
     if (dbProcess) {
       dbProcess.kill();
     }
+
+    // PIDリストから自身を削除し、必要に応じてソケットファイルを削除
+    await removePid(SOCKET_PATH);
+
     process.exit(code || 0);
   });
-}
+};
 
 // 実行
-main().catch((err) => {
+main().catch(async (err) => {
   console.error("Launcher error:", err);
+
+  // エラー時もPIDリストから自身を削除し、必要に応じてソケットファイルを削除
+  await removePid(SOCKET_PATH);
+
   process.exit(1);
 });
