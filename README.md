@@ -131,8 +131,8 @@ flowchart LR
     end
     
     subgraph "Database Layer"
-        DB[DB Server\n<b>Single Connection Manager</b>]
-        DuckDB[(DuckDB\nDatabase)]
+        DB[DB Server (Single connection)]
+        DuckDB[DuckDB]
     end
     
     Claude <--> MCP1
