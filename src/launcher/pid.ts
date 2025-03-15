@@ -1,6 +1,7 @@
 import { existsSync, unlinkSync, promises as fsPromises } from "fs";
 import { join } from "path";
 import { homedir } from "os";
+import { z } from "zod";
 const PID_LIST_PATH = join(
   homedir(),
   ".local",
@@ -8,6 +9,13 @@ const PID_LIST_PATH = join(
   "duckdb-memory-server",
   ".mcp_servers.json"
 );
+
+// PIDリストのスキーマ定義
+const PidListSchema = z.object({
+  pids: z.array(z.number()),
+});
+
+type PidList = z.infer<typeof PidListSchema>;
 
 /**
  * PIDリストを読み込む関数
@@ -17,12 +25,39 @@ export async function readPidList(): Promise<number[]> {
   try {
     if (existsSync(PID_LIST_PATH)) {
       const data = await fsPromises.readFile(PID_LIST_PATH, "utf8");
-      return JSON.parse(data);
+
+      // ファイルが空の場合は空の配列を返す
+      if (!data || data.trim() === "") {
+        return [];
+      }
+
+      // JSONをパース
+      const jsonData = JSON.parse(data);
+
+      // 古い形式（配列）と新しい形式（オブジェクト）の両方をサポート
+      if (Array.isArray(jsonData)) {
+        // 古い形式の場合は配列をそのまま返す
+        return jsonData;
+      } else {
+        // 新しい形式の場合はZodでバリデーション
+        try {
+          const validatedData = PidListSchema.parse(jsonData);
+          return validatedData.pids;
+        } catch (validationError) {
+          console.error("Invalid PID list format:", validationError);
+          return [];
+        }
+      }
     }
     return [];
   } catch (error) {
-    console.error("Error reading PID list:", error);
-    return [];
+    // ファイル読み込みエラーの場合のみエラーをキャッチして処理
+    if (error instanceof Error && error.message.includes("ENOENT")) {
+      // ファイルが存在しない場合は空の配列を返す
+      return [];
+    }
+    // その他のエラーは再スロー
+    throw error;
   }
 }
 
@@ -32,9 +67,10 @@ export async function readPidList(): Promise<number[]> {
  */
 export async function writePidList(pids: number[]): Promise<void> {
   try {
-    await fsPromises.writeFile(PID_LIST_PATH, JSON.stringify(pids), "utf8");
+    await fsPromises.writeFile(PID_LIST_PATH, JSON.stringify({ pids }), "utf8");
   } catch (error) {
     console.error("Error writing PID list:", error);
+    throw error; // エラーを再スローして呼び出し元に通知
   }
 }
 
