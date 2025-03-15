@@ -107,7 +107,8 @@ const startMcpServer = () => {
   };
 
   // MCPサーバーのパス
-  const mcpServerPath = new URL("../index.mjs", import.meta.url).pathname;
+  const mcpServerPath = new URL("../client/index.mjs", import.meta.url)
+    .pathname;
 
   // MCPサーバーをサブプロセスとして起動
   const mcpProcess = spawn("node", [mcpServerPath], {
