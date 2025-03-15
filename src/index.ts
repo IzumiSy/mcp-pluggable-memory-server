@@ -2,11 +2,14 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { NullLogger } from "./logger";
 import { join } from "path";
 import { homedir } from "os";
 import { KnowledgeGraphClient } from "./client";
-import { EntityObject, ObservationObject, RelationObject } from "./types";
+import {
+  EntityObject,
+  ObservationObject,
+  RelationObject,
+} from "./db-server/types";
 
 // Create an MCP server
 const server = new McpServer({
@@ -14,13 +17,12 @@ const server = new McpServer({
   version: "1.1.2",
 });
 
-const logger = new NullLogger();
 const socketPath =
   process.env.SOCKET_PATH ||
   join(homedir(), ".local", "share", "duckdb-memory-server", "db-server.sock");
 
 // DBサーバーと通信するクライアントを作成
-const knowledgeGraphManager = new KnowledgeGraphClient(socketPath, logger);
+const knowledgeGraphManager = new KnowledgeGraphClient(socketPath);
 
 // Create entities tool
 server.tool(
@@ -202,7 +204,6 @@ server.tool(
 const main = async () => {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  logger.info("DuckDB Knowledge Graph MCP Server running on stdio");
 
   // プロセス終了時にクライアントを閉じる
   process.on("SIGINT", async () => {

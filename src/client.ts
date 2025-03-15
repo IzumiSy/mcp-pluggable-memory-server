@@ -4,11 +4,11 @@ import {
   Relation,
   Observation,
   KnowledgeGraph,
-} from "./types";
-import { Logger, ConsoleLogger } from "./logger";
+} from "./db-server/types";
+import { Logger } from "./db-server/logger";
 import { join } from "path";
 import { homedir } from "os";
-import { Client, Dispatcher } from "undici";
+import { Client } from "undici";
 import { extractError } from "./utils";
 
 /**
@@ -20,7 +20,7 @@ export class KnowledgeGraphClient implements KnowledgeGraphManagerInterface {
   private client: Client;
   private requestId: number = 0;
 
-  constructor(socketPath?: string, logger?: Logger) {
+  constructor(socketPath?: string) {
     this.socketPath =
       socketPath ||
       join(
@@ -30,8 +30,6 @@ export class KnowledgeGraphClient implements KnowledgeGraphManagerInterface {
         "duckdb-memory-server",
         "db-server.sock"
       );
-    this.logger = logger || new ConsoleLogger();
-
     // Unix socketに接続するundiciクライアントを作成
     this.client = new Client("http://localhost", {
       socketPath: this.socketPath,
@@ -108,48 +106,16 @@ export class KnowledgeGraphClient implements KnowledgeGraphManagerInterface {
     }
   }
 
-  /**
-   * リトライ機能付きJSON-RPCリクエスト
-   */
-  private async jsonRpcRequestWithRetry<T>(
-    method: string,
-    params: any,
-    retries: number = 3
-  ): Promise<T> {
-    let lastError: Error | undefined;
-
-    for (let attempt = 0; attempt < retries; attempt++) {
-      try {
-        return await this.jsonRpcRequest<T>(method, params);
-      } catch (error) {
-        lastError = error as Error;
-        this.logger.warn(
-          `Request failed (attempt ${attempt + 1}/${retries})`,
-          extractError(error)
-        );
-
-        // 最後の試行以外は待機してから再試行
-        if (attempt < retries - 1) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, 1000 * Math.pow(2, attempt))
-          );
-        }
-      }
-    }
-
-    throw lastError;
-  }
-
   // KnowledgeGraphManagerInterfaceの実装
 
   async createEntities(entities: Entity[]): Promise<Entity[]> {
-    return this.jsonRpcRequestWithRetry<Entity[]>("createEntities", {
+    return this.jsonRpcRequest<Entity[]>("createEntities", {
       entities,
     });
   }
 
   async createRelations(relations: Relation[]): Promise<Relation[]> {
-    return this.jsonRpcRequestWithRetry<Relation[]>("createRelations", {
+    return this.jsonRpcRequest<Relation[]>("createRelations", {
       relations,
     });
   }
@@ -157,38 +123,36 @@ export class KnowledgeGraphClient implements KnowledgeGraphManagerInterface {
   async addObservations(
     observations: Array<Observation>
   ): Promise<Observation[]> {
-    return this.jsonRpcRequestWithRetry<Observation[]>("addObservations", {
+    return this.jsonRpcRequest<Observation[]>("addObservations", {
       observations,
     });
   }
 
   async deleteEntities(entityNames: string[]): Promise<void> {
-    await this.jsonRpcRequestWithRetry<{ success: boolean }>("deleteEntities", {
+    await this.jsonRpcRequest<{ success: boolean }>("deleteEntities", {
       entityNames,
     });
   }
 
   async deleteObservations(deletions: Array<Observation>): Promise<void> {
-    await this.jsonRpcRequestWithRetry<{ success: boolean }>(
-      "deleteObservations",
-      { deletions }
-    );
+    await this.jsonRpcRequest<{ success: boolean }>("deleteObservations", {
+      deletions,
+    });
   }
 
   async deleteRelations(relations: Relation[]): Promise<void> {
-    await this.jsonRpcRequestWithRetry<{ success: boolean }>(
-      "deleteRelations",
-      { relations }
-    );
+    await this.jsonRpcRequest<{ success: boolean }>("deleteRelations", {
+      relations,
+    });
   }
 
   async searchNodes(query: string): Promise<KnowledgeGraph> {
-    return this.jsonRpcRequestWithRetry<KnowledgeGraph>("searchNodes", {
+    return this.jsonRpcRequest<KnowledgeGraph>("searchNodes", {
       query,
     });
   }
 
   async openNodes(names: string[]): Promise<KnowledgeGraph> {
-    return this.jsonRpcRequestWithRetry<KnowledgeGraph>("openNodes", { names });
+    return this.jsonRpcRequest<KnowledgeGraph>("openNodes", { names });
   }
 }
