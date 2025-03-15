@@ -6,20 +6,10 @@ import { DuckDBKnowledgeGraphManager } from "./manager";
 import { NullLogger } from "./logger";
 import { existsSync, mkdirSync } from "fs";
 import { Entity, Relation, Observation } from "./types";
+import { defaultSocketPath } from "../client";
 
 // ソケットファイルのパス
-const SOCKET_PATH =
-  process.env.SOCKET_PATH ||
-  join(homedir(), ".local", "share", "duckdb-memory-server", "db-server.sock");
-
-// ソケットディレクトリの作成
-const socketDir = join(homedir(), ".local", "share", "duckdb-memory-server");
-if (!existsSync(socketDir)) {
-  mkdirSync(socketDir, { recursive: true });
-}
-
-// Fastifyインスタンスの作成
-const server = Fastify();
+const SOCKET_PATH = process.env.SOCKET_PATH ?? defaultSocketPath;
 
 // ロガーの設定
 const logger = new NullLogger();
@@ -38,38 +28,36 @@ const knowledgeGraphManager = new DuckDBKnowledgeGraphManager(() => {
 }, logger);
 
 // JSON-RPCエラーコード定義
-enum JsonRpcErrorCode {
+const JsonRpcErrorCode = {
   // 標準エラーコード
-  PARSE_ERROR = -32700,
-  INVALID_REQUEST = -32600,
-  METHOD_NOT_FOUND = -32601,
-  INVALID_PARAMS = -32602,
-  INTERNAL_ERROR = -32603,
+  PARSE_ERROR: -32700,
+  INVALID_REQUEST: -32600,
+  METHOD_NOT_FOUND: -32601,
+  INVALID_PARAMS: -32602,
+  INTERNAL_ERROR: -32603,
 
   // カスタムエラーコード
-  DATABASE_ERROR = -32000,
-  ENTITY_NOT_FOUND = -32001,
-  DUPLICATE_ENTITY = -32002,
-  VALIDATION_ERROR = -32003,
-}
+  DATABASE_ERROR: -32000,
+  ENTITY_NOT_FOUND: -32001,
+  DUPLICATE_ENTITY: -32002,
+  VALIDATION_ERROR: -32003,
+} as const;
 
 // エラーレスポンス生成ヘルパー
-function createErrorResponse(
+const createErrorResponse = (
   id: string | number | null,
-  code: JsonRpcErrorCode,
+  code: (typeof JsonRpcErrorCode)[keyof typeof JsonRpcErrorCode],
   message: string,
-  data?: any
-) {
-  return {
-    jsonrpc: "2.0",
-    id,
-    error: {
-      code,
-      message,
-      data,
-    },
-  };
-}
+  data?: unknown
+) => ({
+  jsonrpc: "2.0",
+  id,
+  error: {
+    code,
+    message,
+    data,
+  },
+});
 
 // JSON-RPCメソッドの実装
 const methods: Record<string, (params: any) => Promise<any>> = {
@@ -121,6 +109,8 @@ const methods: Record<string, (params: any) => Promise<any>> = {
     return { status: "ok" };
   },
 };
+
+const server = Fastify();
 
 // JSON-RPCエンドポイント
 server.post("/rpc", async (request, reply) => {
@@ -180,7 +170,14 @@ server.post("/rpc", async (request, reply) => {
 
 // サーバー起動
 const start = async () => {
+  const socketDir = join(homedir(), ".local", "share", "duckdb-memory-server");
+
   try {
+    // ソケットディレクトリの作成
+    if (!existsSync(socketDir)) {
+      mkdirSync(socketDir, { recursive: true });
+    }
+
     await server.listen({ path: SOCKET_PATH });
   } catch (err) {
     process.exit(1);

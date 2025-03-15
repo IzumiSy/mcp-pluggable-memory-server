@@ -4,7 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { join } from "path";
 import { homedir } from "os";
-import { KnowledgeGraphClient } from "./client";
+import { defaultSocketPath, KnowledgeGraphClient } from "./client";
 import {
   EntityObject,
   ObservationObject,
@@ -17,12 +17,10 @@ const server = new McpServer({
   version: "1.1.2",
 });
 
-const socketPath =
-  process.env.SOCKET_PATH ||
-  join(homedir(), ".local", "share", "duckdb-memory-server", "db-server.sock");
-
 // DBサーバーと通信するクライアントを作成
-const knowledgeGraphManager = new KnowledgeGraphClient(socketPath);
+const knowledgeGraphManager = new KnowledgeGraphClient(
+  process.env.SOCKET_PATH ?? defaultSocketPath
+);
 
 // Create entities tool
 server.tool(

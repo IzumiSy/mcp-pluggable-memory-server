@@ -5,11 +5,10 @@ import { homedir } from "os";
 import { existsSync, unlinkSync } from "fs";
 import { Client } from "undici";
 import { addPid, removePid } from "./pid";
+import { defaultSocketPath } from "../client";
 
 // 設定
-const SOCKET_PATH =
-  process.env.SOCKET_PATH ||
-  join(homedir(), ".local", "share", "duckdb-memory-server", "db-server.sock");
+const SOCKET_PATH = process.env.SOCKET_PATH || defaultSocketPath;
 const MEMORY_FILE_PATH =
   process.env.MEMORY_FILE_PATH ||
   join(
