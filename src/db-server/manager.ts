@@ -10,7 +10,7 @@ import { DuckDBInstance } from "@duckdb/node-api";
 import Fuse from "fuse.js";
 import { dirname } from "path";
 import { existsSync, mkdirSync } from "fs";
-import { extractError } from "./utils";
+import { extractError } from "../utils";
 
 /**
  * An implementation of the KnowledgeGraphManagerInterface that uses DuckDB and Fuse.js

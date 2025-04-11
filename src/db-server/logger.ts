@@ -1,5 +1,3 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-
 // アプリケーション内で使用するログレベル
 export enum LogLevel {
   DEBUG = "debug",
