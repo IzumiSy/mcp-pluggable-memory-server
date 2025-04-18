@@ -2,7 +2,7 @@ import { spawn } from "child_process";
 import { homedir } from "os";
 import { join } from "path";
 import { removePid } from "./pid";
-import { defaultSocketPath } from "../client/client";
+import { defaultSocketPath } from "../client/index";
 
 export const SOCKET_PATH = process.env.SOCKET_PATH || defaultSocketPath;
 

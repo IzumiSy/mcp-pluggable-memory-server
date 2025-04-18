@@ -4,7 +4,7 @@ import {
   Relation,
   Observation,
   KnowledgeGraph,
-} from "./types";
+} from "../schema";
 import { Logger, ConsoleLogger } from "./logger";
 import { DuckDBInstance } from "@duckdb/node-api";
 import Fuse from "fuse.js";

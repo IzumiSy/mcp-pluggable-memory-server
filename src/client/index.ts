@@ -2,12 +2,28 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { defaultSocketPath, KnowledgeGraphClient } from "./client";
-import {
-  EntityObject,
-  ObservationObject,
-  RelationObject,
-} from "../db-server/types";
+import { EntityObject, ObservationObject, RelationObject } from "../schema";
+import { homedir } from "os";
+import { join } from "path";
+import { createTRPCClient, httpBatchLink } from "@trpc/client";
+import { AppRouter } from "../db-server/handlers";
+
+export const defaultSocketPath = join(
+  homedir(),
+  ".local",
+  "share",
+  "duckdb-memory-server",
+  "db-server.sock"
+);
+
+// DBサーバーと通信するクライアントを作成
+const client = createTRPCClient<AppRouter>({
+  links: [
+    httpBatchLink({
+      url: process.env.SOCKET_PATH ?? defaultSocketPath,
+    }),
+  ],
+});
 
 // Create an MCP server
 const server = new McpServer({
@@ -15,75 +31,72 @@ const server = new McpServer({
   version: "1.1.2",
 });
 
-// DBサーバーと通信するクライアントを作成
-const knowledgeGraphManager = new KnowledgeGraphClient(
-  process.env.SOCKET_PATH ?? defaultSocketPath
-);
-
-// Create entities tool
 server.tool(
   "create_entities",
   "Create multiple new entities in the knowledge graph",
   {
     entities: z.array(EntityObject),
   },
-  async ({ entities }) => ({
-    content: [
-      {
-        type: "text",
-        text: JSON.stringify(
-          await knowledgeGraphManager.createEntities(entities),
-          null,
-          2
-        ),
-      },
-    ],
-  })
+  async ({ entities }) => {
+    const result = await client.createEntities.mutate({
+      entities,
+    });
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(result, null, 2),
+        },
+      ],
+    };
+  }
 );
 
-// Create relations tool
 server.tool(
   "create_relations",
   "Create multiple new relations between entities in the knowledge graph. Relations should be in active voice",
   {
     relations: z.array(RelationObject),
   },
-  async ({ relations }) => ({
-    content: [
-      {
-        type: "text",
-        text: JSON.stringify(
-          await knowledgeGraphManager.createRelations(relations),
-          null,
-          2
-        ),
-      },
-    ],
-  })
+  async ({ relations }) => {
+    const result = await client.createRelations.mutate({
+      relations,
+    });
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(result, null, 2),
+        },
+      ],
+    };
+  }
 );
 
-// Add observations tool
 server.tool(
   "add_observations",
   "Add new observations to existing entities in the knowledge graph",
   {
     observations: z.array(ObservationObject),
   },
-  async ({ observations }) => ({
-    content: [
-      {
-        type: "text",
-        text: JSON.stringify(
-          await knowledgeGraphManager.addObservations(observations),
-          null,
-          2
-        ),
-      },
-    ],
-  })
+  async ({ observations }) => {
+    const result = await client.addObservations.mutate({
+      observations,
+    });
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(result, null, 2),
+        },
+      ],
+    };
+  }
 );
 
-// Delete entities tool
 server.tool(
   "delete_entities",
   "Delete multiple entities and their associated relations from the knowledge graph",
@@ -93,14 +106,16 @@ server.tool(
       .describe("An array of entity names to delete"),
   },
   async ({ entityNames }) => {
-    await knowledgeGraphManager.deleteEntities(entityNames);
+    await client.deleteEntities.mutate({
+      entityNames,
+    });
+
     return {
       content: [{ type: "text", text: "Entities deleted successfully" }],
     };
   }
 );
 
-// Delete observations tool
 server.tool(
   "delete_observations",
   "Delete specific observations from entities in the knowledge graph",
@@ -117,14 +132,16 @@ server.tool(
     ),
   },
   async ({ deletions }) => {
-    await knowledgeGraphManager.deleteObservations(deletions);
+    await client.deleteObservations.mutate({
+      observations: deletions,
+    });
+
     return {
       content: [{ type: "text", text: "Observations deleted successfully" }],
     };
   }
 );
 
-// Delete relations tool
 server.tool(
   "delete_relations",
   "Delete multiple relations from the knowledge graph",
@@ -144,14 +161,16 @@ server.tool(
       .describe("An array of relations to delete"),
   },
   async ({ relations }) => {
-    await knowledgeGraphManager.deleteRelations(relations);
+    await client.deleteRelations.mutate({
+      relations,
+    });
+
     return {
       content: [{ type: "text", text: "Relations deleted successfully" }],
     };
   }
 );
 
-// Search nodes tool
 server.tool(
   "search_nodes",
   "Search for nodes in the knowledge graph based on a query",
@@ -162,55 +181,47 @@ server.tool(
         "The search query to match against entity names, types, and observation content"
       ),
   },
-  async ({ query }) => ({
-    content: [
-      {
-        type: "text",
-        text: JSON.stringify(
-          await knowledgeGraphManager.searchNodes(query),
-          null,
-          2
-        ),
-      },
-    ],
-  })
+  async ({ query }) => {
+    const result = await client.searchNodes.query({
+      query,
+    });
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(result, null, 2),
+        },
+      ],
+    };
+  }
 );
 
-// Open nodes tool
 server.tool(
   "open_nodes",
   "Open specific nodes in the knowledge graph by their names",
   {
     names: z.array(z.string()).describe("An array of entity names to retrieve"),
   },
-  async ({ names }) => ({
-    content: [
-      {
-        type: "text",
-        text: JSON.stringify(
-          await knowledgeGraphManager.openNodes(names),
-          null,
-          2
-        ),
-      },
-    ],
-  })
+  async ({ names }) => {
+    const result = await client.openNodes.query({
+      names,
+    });
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(result, null, 2),
+        },
+      ],
+    };
+  }
 );
 
 const main = async () => {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-
-  // プロセス終了時にクライアントを閉じる
-  process.on("SIGINT", async () => {
-    await knowledgeGraphManager.close();
-    process.exit(0);
-  });
-
-  process.on("SIGTERM", async () => {
-    await knowledgeGraphManager.close();
-    process.exit(0);
-  });
 };
 
 main().catch((error) => {

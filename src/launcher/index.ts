@@ -1,46 +1,24 @@
 #!/usr/bin/env node
 import { existsSync, unlinkSync } from "fs";
-import { Client } from "undici";
 import { addPid, removePid } from "./pid";
 import { startProcess, SOCKET_PATH } from "./server";
+import { createTRPCClient, httpBatchLink } from "@trpc/client";
+import { defaultSocketPath } from "../client";
+import { AppRouter } from "../db-server/handlers";
 
-// DBサーバーのヘルスチェック
-const checkDBServerHealth = async (client: Client) => {
+const client = createTRPCClient<AppRouter>({
+  links: [
+    httpBatchLink({
+      url: process.env.SOCKET_PATH ?? defaultSocketPath,
+    }),
+  ],
+});
+
+const checkDBServerHealth = async () => {
   try {
-    // JSON-RPCリクエストを送信
-    const { statusCode, body } = await client.request({
-      method: "POST",
-      path: "/rpc",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "health",
-        params: {},
-      }),
-    });
-
-    // レスポンスの確認
-    if (statusCode === 200) {
-      const response = (await body.json()) as {
-        jsonrpc: string;
-        id: number;
-        result?: { status: string };
-        error?: any;
-      };
-
-      if (response.result && response.result.status === "ok") {
-        await client.close();
-        return true;
-      }
-    }
-
-    await client.close();
-    return false;
+    const r = await client.healthcheck.query();
+    return r === "ok";
   } catch (error) {
-    // 接続エラーの場合、サーバーは起動していないと判断
     return false;
   }
 };
@@ -66,12 +44,12 @@ const startDBServer = async () => {
     return {
       process,
       kill,
-      waitUp: async (client: Client) => {
+      waitUp: async () => {
         const maxAttempts = 10;
         const interval = 500;
 
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
-          const isHealthy = await checkDBServerHealth(client);
+          const isHealthy = await checkDBServerHealth();
           if (isHealthy) {
             return;
           }
@@ -87,16 +65,11 @@ const startDBServer = async () => {
     return start();
   }
 
-  const client = new Client("http://localhost", {
-    socketPath: SOCKET_PATH,
-    keepAliveTimeout: 1000,
-  });
-
   // DBサーバーのヘルスチェック
-  const isDBServerHealthy = await checkDBServerHealth(client);
+  const isDBServerHealthy = await checkDBServerHealth();
   if (!isDBServerHealthy) {
     const server = await start();
-    await server.waitUp(client);
+    await server.waitUp();
     return server;
   }
 
