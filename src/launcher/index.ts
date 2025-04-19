@@ -94,7 +94,6 @@ const startDBServer = async (props: {
     const dbProcess = await startDBServer({
       onError: async () => {
         await pidListManager.removePid();
-        process.exit(1);
       },
     });
     const mcpProcess = await startProcess({
