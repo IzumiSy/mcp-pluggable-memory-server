@@ -1,4 +1,3 @@
-import { existsSync, mkdirSync } from "fs";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
 import Fastify from "fastify";
 import { appRouter } from "./handlers";

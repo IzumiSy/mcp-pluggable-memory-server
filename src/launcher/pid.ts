@@ -20,10 +20,6 @@ export class PIDListManager {
    * A function to add the current PID to the list
    */
   async addPid() {
-    if (!existsSync(this.appDirPath)) {
-      await fsPromises.mkdir(this.appDirPath, { recursive: true });
-    }
-
     const pids = await this.read();
     if (!pids.includes(process.pid)) {
       pids.push(process.pid);

@@ -1,13 +1,13 @@
 import { spawn } from "child_process";
-import { PIDListManager } from "./pid";
 
-export const startProcess = async (props: {
+export type StartProcessProps = {
   path: string;
-  pidListManager: PIDListManager;
   extraEnvs?: Record<string, string>;
   beforeSpawn?: () => Promise<void>;
   onError?: (err: Error) => Promise<void>;
-}) => {
+};
+
+export const startProcess = async (props: StartProcessProps) => {
   await props.beforeSpawn?.();
 
   const serverProcess = spawn("node", [props.path], {
@@ -20,7 +20,6 @@ export const startProcess = async (props: {
 
   serverProcess.on("error", async (err) => {
     await props.onError?.(err);
-    await props.pidListManager.removePid();
     process.exit(1);
   });
 

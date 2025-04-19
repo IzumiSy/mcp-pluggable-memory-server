@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, unlinkSync } from "fs";
+import { existsSync, mkdirSync, unlinkSync } from "fs";
 import { startProcess } from "./server";
 import { createTRPCClient, httpBatchLink, retryLink } from "@trpc/client";
 import { AppRouter } from "../db-server/handlers";
@@ -44,7 +44,6 @@ const startDBServer = async () => {
       extraEnvs: {
         MEMORY_FILE_PATH: process.env.MEMORY_FILE_PATH ?? "",
       },
-      pidListManager,
 
       // Delete the socket file if it exists before starting the server
       beforeSpawn: async () => deleteSocketFile(),
@@ -52,7 +51,6 @@ const startDBServer = async () => {
 
     const kill = async () => {
       dbServerProcess?.kill();
-      await pidListManager.removePid();
     };
 
     return {
@@ -84,15 +82,22 @@ const startDBServer = async () => {
 
 (async () => {
   try {
+    if (!existsSync(defaultAppDir)) {
+      mkdirSync(defaultAppDir, { recursive: true });
+    }
+
     await pidListManager.addPid();
 
     const dbProcess = await startDBServer();
     const mcpProcess = await startProcess({
       path: "../client/index.mjs",
-      pidListManager,
+      onError: async () => {
+        pidListManager.removePid();
+      },
     });
 
     mcpProcess.on("exit", async () => {
+      await pidListManager.removePid();
       await dbProcess?.kill();
     });
 

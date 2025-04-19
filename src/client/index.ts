@@ -6,19 +6,13 @@ import { EntityObject, ObservationObject, RelationObject } from "../schema";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import { AppRouter } from "../db-server/handlers";
 import { join } from "path";
-import { socketFileName } from "../path";
+import { defaultAppDir, socketFileName } from "../path";
 
 const main = async () => {
-  const appDir = process.env.APP_DIR;
-  if (!appDir) {
-    console.error("No app directory provided");
-    process.exit(1);
-  }
-
   const dbClient = createTRPCClient<AppRouter>({
     links: [
       httpBatchLink({
-        url: join(appDir, socketFileName),
+        url: join(defaultAppDir, socketFileName),
       }),
     ],
   });
