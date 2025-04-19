@@ -1,5 +1,7 @@
 import { existsSync, promises as fsPromises } from "fs";
 import { z } from "zod";
+import { defaultAppDir } from "../path";
+import { join } from "path";
 
 const fileSchema = z.object({
   pids: z.array(z.number()),
@@ -10,7 +12,7 @@ export class PIDListManager {
   private onNoActivePids: () => void;
 
   constructor(props: { onNoActivePids: () => void }) {
-    this.pidListFilePath = ".mcp_servers.json";
+    this.pidListFilePath = join(defaultAppDir, ".mcp_servers.json");
     this.onNoActivePids = props.onNoActivePids;
   }
 

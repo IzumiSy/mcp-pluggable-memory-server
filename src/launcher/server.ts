@@ -1,4 +1,6 @@
 import { spawn } from "child_process";
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
 
 export type StartProcessProps = {
   path: string;
@@ -7,10 +9,12 @@ export type StartProcessProps = {
   onError?: (err: Error) => Promise<void>;
 };
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
 export const startProcess = async (props: StartProcessProps) => {
   await props.beforeSpawn?.();
 
-  const serverProcess = spawn("node", [props.path], {
+  const serverProcess = spawn("node", [resolve(__dirname, props.path)], {
     stdio: "inherit",
     env: {
       ...process.env,
