@@ -26,11 +26,6 @@ const deleteSocketFile = () => {
   }
 };
 
-const pidListManager = new PIDListManager({
-  appDir: defaultAppDir,
-  onNoActivePids: deleteSocketFile,
-});
-
 const checkDBServerHealth = () =>
   healthCheckClient.healthcheck
     .query()
@@ -84,6 +79,10 @@ const startDBServer = async (props: {
 };
 
 (async () => {
+  const pidListManager = new PIDListManager({
+    onNoActivePids: deleteSocketFile,
+  });
+
   try {
     if (!existsSync(defaultAppDir)) {
       mkdirSync(defaultAppDir, { recursive: true });

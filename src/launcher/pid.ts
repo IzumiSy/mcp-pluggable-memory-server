@@ -6,12 +6,10 @@ const fileSchema = z.object({
 });
 
 export class PIDListManager {
-  private appDirPath: string;
   private pidListFilePath: string;
   private onNoActivePids: () => void;
 
-  constructor(props: { appDir: string; onNoActivePids: () => void }) {
-    this.appDirPath = props.appDir;
+  constructor(props: { onNoActivePids: () => void }) {
     this.pidListFilePath = ".mcp_servers.json";
     this.onNoActivePids = props.onNoActivePids;
   }
