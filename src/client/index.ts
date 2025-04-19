@@ -3,16 +3,17 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { EntityObject, ObservationObject, RelationObject } from "../schema";
-import { createTRPCClient, httpBatchLink } from "@trpc/client";
+import { createTRPCClient } from "@trpc/client";
 import { AppRouter } from "../db-server/handlers";
 import { join } from "path";
 import { defaultAppDir, socketFileName } from "../path";
+import { unixDomainSocketLink } from "./link";
 
 const main = async () => {
   const dbClient = createTRPCClient<AppRouter>({
     links: [
-      httpBatchLink({
-        url: join(defaultAppDir, socketFileName),
+      unixDomainSocketLink({
+        path: join(defaultAppDir, socketFileName),
       }),
     ],
   });

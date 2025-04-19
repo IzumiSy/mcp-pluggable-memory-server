@@ -9,3 +9,4 @@ export const defaultAppDir = join(
 );
 
 export const socketFileName = "db-server.sock";
+export const defaultKnowledgeFileName = "knowledge-graph.data";

@@ -4,7 +4,11 @@ import { startProcess, StartProcessProps } from "./server";
 import { createTRPCClient, httpBatchLink, retryLink } from "@trpc/client";
 import { AppRouter } from "../db-server/handlers";
 import { PIDListManager } from "./pid";
-import { defaultAppDir, socketFileName } from "../path";
+import {
+  defaultAppDir,
+  defaultKnowledgeFileName,
+  socketFileName,
+} from "../path";
 import { join } from "path";
 
 const socketFilePath = join(defaultAppDir, socketFileName);
@@ -39,7 +43,9 @@ const startDBServer = async (props: {
     const dbServerProcess = await startProcess({
       path: "../db-server/index.mjs",
       extraEnvs: {
-        MEMORY_FILE_PATH: process.env.MEMORY_FILE_PATH ?? "",
+        MEMORY_FILE_PATH:
+          process.env.MEMORY_FILE_PATH ??
+          join(defaultAppDir, defaultKnowledgeFileName),
       },
       onError: props.onError,
 
