@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { existsSync, mkdirSync, unlinkSync } from "fs";
-import { startProcess } from "./server";
+import { startProcess, StartProcessProps } from "./server";
 import { createTRPCClient, httpBatchLink, retryLink } from "@trpc/client";
 import { AppRouter } from "../db-server/handlers";
 import { PIDListManager } from "./pid";
@@ -37,13 +37,16 @@ const checkDBServerHealth = () =>
     .then((r) => r === "ok")
     .catch(() => false);
 
-const startDBServer = async () => {
+const startDBServer = async (props: {
+  onError?: StartProcessProps["onError"];
+}) => {
   const start = async () => {
     const dbServerProcess = await startProcess({
       path: "../db-server/index.mjs",
       extraEnvs: {
         MEMORY_FILE_PATH: process.env.MEMORY_FILE_PATH ?? "",
       },
+      onError: props.onError,
 
       // Delete the socket file if it exists before starting the server
       beforeSpawn: async () => deleteSocketFile(),
@@ -88,11 +91,16 @@ const startDBServer = async () => {
 
     await pidListManager.addPid();
 
-    const dbProcess = await startDBServer();
+    const dbProcess = await startDBServer({
+      onError: async () => {
+        await pidListManager.removePid();
+        process.exit(1);
+      },
+    });
     const mcpProcess = await startProcess({
       path: "../client/index.mjs",
       onError: async () => {
-        pidListManager.removePid();
+        await pidListManager.removePid();
       },
     });
 
