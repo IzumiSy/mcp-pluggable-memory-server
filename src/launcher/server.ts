@@ -1,40 +1,26 @@
 import { spawn } from "child_process";
-import { homedir } from "os";
-import { join } from "path";
-import { removePid } from "./pid";
-import { defaultSocketPath } from "../client/index";
-
-export const SOCKET_PATH = process.env.SOCKET_PATH || defaultSocketPath;
+import { PIDListManager } from "./pid";
 
 export const startProcess = async (props: {
   path: string;
+  pidListManager: PIDListManager;
+  extraEnvs?: Record<string, string>;
   beforeSpawn?: () => Promise<void>;
   onError?: (err: Error) => Promise<void>;
 }) => {
-  const MEMORY_FILE_PATH =
-    process.env.MEMORY_FILE_PATH ||
-    join(
-      homedir(),
-      ".local",
-      "share",
-      "duckdb-memory-server",
-      "knowledge-graph.data"
-    );
-
   await props.beforeSpawn?.();
 
   const serverProcess = spawn("node", [props.path], {
     stdio: "inherit",
     env: {
       ...process.env,
-      SOCKET_PATH,
-      MEMORY_FILE_PATH,
+      ...props.extraEnvs,
     },
   });
 
   serverProcess.on("error", async (err) => {
     await props.onError?.(err);
-    await removePid(SOCKET_PATH);
+    await props.pidListManager.removePid();
     process.exit(1);
   });
 

@@ -10,7 +10,6 @@ import { DuckDBInstance } from "@duckdb/node-api";
 import Fuse from "fuse.js";
 import { dirname } from "path";
 import { existsSync, mkdirSync } from "fs";
-import { extractError } from "../utils";
 
 /**
  * An implementation of the KnowledgeGraphManagerInterface that uses DuckDB and Fuse.js
@@ -715,3 +714,15 @@ export class DuckDBKnowledgeGraphManager
     }
   }
 }
+
+const extractError = (error: unknown) => {
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+    };
+  } else {
+    return {
+      message: "Unknown error",
+    };
+  }
+};

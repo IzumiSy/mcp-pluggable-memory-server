@@ -1,71 +1,77 @@
 #!/usr/bin/env node
 import { existsSync, unlinkSync } from "fs";
-import { addPid, removePid } from "./pid";
-import { startProcess, SOCKET_PATH } from "./server";
-import { createTRPCClient, httpBatchLink } from "@trpc/client";
-import { defaultSocketPath } from "../client";
+import { startProcess } from "./server";
+import { createTRPCClient, httpBatchLink, retryLink } from "@trpc/client";
 import { AppRouter } from "../db-server/handlers";
+import { PIDListManager } from "./pid";
+import { defaultAppDir, socketFileName } from "../path";
+import { join } from "path";
 
-const client = createTRPCClient<AppRouter>({
+const socketFilePath = join(defaultAppDir, socketFileName);
+const healthCheckClient = createTRPCClient<AppRouter>({
   links: [
+    retryLink({
+      retry: ({ attempts }) => attempts <= 3,
+      retryDelayMs: () => 500,
+    }),
     httpBatchLink({
-      url: process.env.SOCKET_PATH ?? defaultSocketPath,
+      url: socketFilePath,
     }),
   ],
 });
 
-const checkDBServerHealth = async () => {
-  try {
-    const r = await client.healthcheck.query();
-    return r === "ok";
-  } catch (error) {
-    return false;
+const deleteSocketFile = () => {
+  if (existsSync(socketFilePath)) {
+    unlinkSync(socketFilePath);
   }
 };
 
+const pidListManager = new PIDListManager({
+  appDir: defaultAppDir,
+  onNoActivePids: deleteSocketFile,
+});
+
+const checkDBServerHealth = () =>
+  healthCheckClient.healthcheck
+    .query()
+    .then((r) => r === "ok")
+    .catch(() => false);
+
 const startDBServer = async () => {
-  // DBサーバーをサブプロセスとして起動
-  // 既存のソケットファイルを起動前に削除（前回の異常終了時に残っている可能性）
   const start = async () => {
-    const process = await startProcess({
+    const dbServerProcess = await startProcess({
       path: "../db-server/index.mjs",
-      beforeSpawn: async () => {
-        if (existsSync(SOCKET_PATH)) {
-          unlinkSync(SOCKET_PATH);
-        }
+      extraEnvs: {
+        MEMORY_FILE_PATH: process.env.MEMORY_FILE_PATH ?? "",
       },
+      pidListManager,
+
+      // Delete the socket file if it exists before starting the server
+      beforeSpawn: async () => deleteSocketFile(),
     });
 
     const kill = async () => {
-      process?.kill();
-      await removePid(SOCKET_PATH);
+      dbServerProcess?.kill();
+      await pidListManager.removePid();
     };
 
     return {
-      process,
+      process: dbServerProcess,
       kill,
       waitUp: async () => {
-        const maxAttempts = 10;
-        const interval = 500;
-
-        for (let attempt = 0; attempt < maxAttempts; attempt++) {
-          const isHealthy = await checkDBServerHealth();
-          if (isHealthy) {
-            return;
-          }
-          await new Promise((resolve) => setTimeout(resolve, interval));
+        const isHealthy = await checkDBServerHealth();
+        if (isHealthy) {
+          return;
         }
-
         await kill();
       },
     };
   };
 
-  if (!existsSync(SOCKET_PATH)) {
+  if (!existsSync(socketFilePath)) {
     return start();
   }
 
-  // DBサーバーのヘルスチェック
   const isDBServerHealthy = await checkDBServerHealth();
   if (!isDBServerHealthy) {
     const server = await start();
@@ -78,15 +84,15 @@ const startDBServer = async () => {
 
 (async () => {
   try {
-    await addPid();
+    await pidListManager.addPid();
 
     const dbProcess = await startDBServer();
     const mcpProcess = await startProcess({
       path: "../client/index.mjs",
+      pidListManager,
     });
 
     mcpProcess.on("exit", async () => {
-      // DBサーバーのプロセスが保持されている場合のみ終了
       await dbProcess?.kill();
     });
 
@@ -97,6 +103,6 @@ const startDBServer = async () => {
     process.on("SIGINT", cleanup);
     process.on("SIGTERM", cleanup);
   } catch {
-    await removePid(SOCKET_PATH);
+    await pidListManager.removePid();
   }
 })();
