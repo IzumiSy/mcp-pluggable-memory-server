@@ -7,15 +7,15 @@ const fileSchema = z.object({
   pids: z.array(z.number()),
 });
 
-type PIDManager = {
+export type PIDManager = {
   get: () => number;
   kill: (pid: number, signal?: string | number) => void;
 };
 
 export class PIDListManager {
   private pidListFilePath: string;
-  private onNoActivePids: () => void;
   private pidManager: PIDManager;
+  private onNoActivePids: () => void;
 
   constructor(props: { onNoActivePids: () => void; manager?: PIDManager }) {
     this.pidManager = props.manager ?? nodejsPidManager;
@@ -39,9 +39,23 @@ export class PIDListManager {
    * A function to remove the PID from the list
    */
   async removePid() {
-    const activePids = (await this.read())
+    const pids = await this.read();
+
+    /**
+     * A function to check if a PID is active
+     */
+    const isPidActive = (pid: number) => {
+      try {
+        this.pidManager.kill(pid, 0);
+        return true;
+      } catch (error) {
+        return false;
+      }
+    };
+
+    const activePids = pids
       .filter((pid) => pid !== this.pidManager.get())
-      .filter(this.isPidActive);
+      .filter(isPidActive);
 
     if (activePids.length === 0) {
       this.onNoActivePids();
@@ -85,21 +99,11 @@ export class PIDListManager {
       "utf8"
     );
   }
-
-  /**
-   * A function to check if a PID is active
-   */
-  private isPidActive(pid: number) {
-    try {
-      this.pidManager.kill(pid, 0);
-      return true;
-    } catch (error) {
-      return false;
-    }
-  }
 }
 
 const nodejsPidManager: PIDManager = {
   get: () => process.pid,
-  kill: (pid: number, signal?: string | number) => process.kill(pid, signal),
+  kill: (pid: number, signal?: string | number) => {
+    process.kill(pid, signal);
+  },
 };
