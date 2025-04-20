@@ -7,11 +7,18 @@ const fileSchema = z.object({
   pids: z.array(z.number()),
 });
 
+type PIDManager = {
+  get: () => number;
+  kill: (pid: number, signal?: string | number) => void;
+};
+
 export class PIDListManager {
   private pidListFilePath: string;
   private onNoActivePids: () => void;
+  private pidManager: PIDManager;
 
-  constructor(props: { onNoActivePids: () => void }) {
+  constructor(props: { onNoActivePids: () => void; manager?: PIDManager }) {
+    this.pidManager = props.manager ?? nodejsPidManager;
     this.pidListFilePath = join(defaultAppDir, ".mcp_servers.json");
     this.onNoActivePids = props.onNoActivePids;
   }
@@ -21,8 +28,9 @@ export class PIDListManager {
    */
   async addPid() {
     const pids = await this.read();
-    if (!pids.includes(process.pid)) {
-      pids.push(process.pid);
+    const pid = this.pidManager.get();
+    if (!pids.includes(pid)) {
+      pids.push(pid);
       await this.write(pids);
     }
   }
@@ -32,7 +40,7 @@ export class PIDListManager {
    */
   async removePid() {
     const activePids = (await this.read())
-      .filter((pid) => pid !== process.pid)
+      .filter((pid) => pid !== this.pidManager.get())
       .filter(this.isPidActive);
 
     if (activePids.length === 0) {
@@ -83,10 +91,15 @@ export class PIDListManager {
    */
   private isPidActive(pid: number) {
     try {
-      process.kill(pid, 0);
+      this.pidManager.kill(pid, 0);
       return true;
     } catch (error) {
       return false;
     }
   }
 }
+
+const nodejsPidManager: PIDManager = {
+  get: () => process.pid,
+  kill: (pid: number, signal?: string | number) => process.kill(pid, signal),
+};
