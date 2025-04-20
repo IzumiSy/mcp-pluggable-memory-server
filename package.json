@@ -15,8 +15,9 @@
     "build": "tsup && shx chmod +x dist/client/index.mjs dist/db-server/index.mjs dist/launcher/index.mjs",
     "start": "node dist/launcher/index.mjs",
     "prepare": "npm run build",
-    "test": "vitest run",
-    "changeset:publish": "pnpm build && changeset publish"
+    "changeset:publish": "pnpm build && changeset publish",
+    "test:unit": "vitest run --project unit-tests",
+    "test:e2e": "vitest run --project e2e-tests"
   },
   "bin": {
     "mcp-duckdb-memory-server": "dist/launcher/index.mjs"
