@@ -96,7 +96,7 @@ describe("PIDListManager", () => {
       );
     });
 
-    it("should handle read errors gracefully", async () => {
+    it("should handle ENOENT read errors gracefully", async () => {
       // Mock readFile to throw the error
       const enoentError = new Error("ENOENT: no such file or directory");
       mockReadFile.mockRejectedValue(enoentError);
@@ -109,15 +109,51 @@ describe("PIDListManager", () => {
         "utf8"
       );
     });
+
+    it("should handle empty file content", async () => {
+      mockExistsSync.mockReturnValue(true);
+      mockReadFile.mockResolvedValue("");
+
+      await manager.addPid();
+
+      expect(mockWriteFile).toHaveBeenCalledWith(
+        expectedFilePath,
+        JSON.stringify({ pids: [12345] }),
+        "utf8"
+      );
+    });
+
+    it("should handle invalid JSON data", async () => {
+      mockExistsSync.mockReturnValue(true);
+      mockReadFile.mockResolvedValue("invalid json");
+
+      await expect(manager.addPid()).rejects.toThrow();
+    });
+
+    it("should handle data that doesn't match the schema", async () => {
+      mockExistsSync.mockReturnValue(true);
+      mockReadFile.mockResolvedValue(JSON.stringify({ notPids: [1, 2, 3] }));
+
+      await expect(manager.addPid()).rejects.toThrow();
+    });
+
+    it("should throw on other read errors", async () => {
+      mockExistsSync.mockReturnValue(true);
+      const permissionError = new Error("EACCES: permission denied");
+      mockReadFile.mockRejectedValue(permissionError);
+
+      await expect(manager.addPid()).rejects.toThrow();
+    });
+
+    it("should handle write errors", async () => {
+      mockReadFile.mockResolvedValue(JSON.stringify({ pids: [] }));
+      mockWriteFile.mockRejectedValue(new Error("Write error"));
+
+      await expect(manager.addPid()).rejects.toThrow("Write error");
+    });
   });
 
   describe("removePid", () => {
-    // Create instance with mock manager
-    const manager = new PIDListManager({
-      onNoActivePids: mockNoActivePidsCallback,
-      manager: buildMockPidManager(),
-    });
-
     it("should remove current PID from the list", async () => {
       // Setup mock to return a list with multiple PIDs including the current one
       mockReadFile.mockResolvedValue(
@@ -212,6 +248,63 @@ describe("PIDListManager", () => {
 
       // Verify onNoActivePids was called
       expect(mockNoActivePidsCallback).toHaveBeenCalled();
+    });
+
+    it("should handle empty file content in removePid", async () => {
+      mockExistsSync.mockReturnValue(true);
+      mockReadFile.mockResolvedValue("");
+
+      await manager.removePid();
+
+      expect(mockWriteFile).toHaveBeenCalledWith(
+        expectedFilePath,
+        JSON.stringify({ pids: [] }),
+        "utf8"
+      );
+      expect(mockNoActivePidsCallback).toHaveBeenCalled();
+    });
+
+    it("should handle invalid JSON data in removePid", async () => {
+      mockExistsSync.mockReturnValue(true);
+      mockReadFile.mockResolvedValue("invalid json");
+
+      await expect(manager.removePid()).rejects.toThrow();
+    });
+
+    it("should handle data that doesn't match the schema in removePid", async () => {
+      mockExistsSync.mockReturnValue(true);
+      mockReadFile.mockResolvedValue(JSON.stringify({ notPids: [1, 2, 3] }));
+
+      await expect(manager.removePid()).rejects.toThrow();
+    });
+
+    it("should handle ENOENT read errors gracefully in removePid", async () => {
+      const enoentError = new Error("ENOENT: no such file or directory");
+      mockReadFile.mockRejectedValue(enoentError);
+
+      await expect(manager.removePid()).resolves.not.toThrow();
+
+      expect(mockWriteFile).toHaveBeenCalledWith(
+        expectedFilePath,
+        JSON.stringify({ pids: [] }),
+        "utf8"
+      );
+      expect(mockNoActivePidsCallback).toHaveBeenCalled();
+    });
+
+    it("should throw on other read errors in removePid", async () => {
+      mockExistsSync.mockReturnValue(true);
+      const permissionError = new Error("EACCES: permission denied");
+      mockReadFile.mockRejectedValue(permissionError);
+
+      await expect(manager.removePid()).rejects.toThrow();
+    });
+
+    it("should handle write errors in removePid", async () => {
+      mockReadFile.mockResolvedValue(JSON.stringify({ pids: [9999, 8888] }));
+      mockWriteFile.mockRejectedValue(new Error("Write error"));
+
+      await expect(manager.removePid()).rejects.toThrow("Write error");
     });
   });
 });
