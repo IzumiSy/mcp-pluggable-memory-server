@@ -5,7 +5,7 @@ import {
   Observation,
   KnowledgeGraph,
 } from "../schema";
-import { Logger, ConsoleLogger } from "./logger";
+import { Logger, NullLogger } from "./logger";
 import { DuckDBInstance } from "@duckdb/node-api";
 import Fuse from "fuse.js";
 import { dirname } from "path";
@@ -65,7 +65,7 @@ export class DuckDBKnowledgeGraphManager
   constructor(dbPathResolver: () => string, logger?: Logger) {
     const dbPath = dbPathResolver();
     this.dbPath = dbPath;
-    this.logger = logger || new ConsoleLogger();
+    this.logger = logger || new NullLogger();
 
     // Create directory if it doesn't exist
     const dbPathDir = dirname(dbPath);

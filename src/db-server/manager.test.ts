@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { DuckDBKnowledgeGraphManager } from "./manager";
 import { join } from "path";
 import { existsSync, unlinkSync } from "fs";

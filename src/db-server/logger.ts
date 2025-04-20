@@ -60,6 +60,8 @@ export class Logger {
   }
 }
 
+export class NullLogger extends Logger {}
+
 export class ConsoleLogger extends Logger {
   debug(message: string, payload?: Record<string, unknown>): void {
     if (this.shouldLog(LogLevel.DEBUG)) {
