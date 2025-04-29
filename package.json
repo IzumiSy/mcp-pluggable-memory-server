@@ -12,14 +12,15 @@
   "main": "index.js",
   "scripts": {
     "dev": "pnpm build && npx @modelcontextprotocol/inspector pnpm start",
-    "build": "tsup src/index.ts && shx chmod +x dist/index.mjs",
-    "start": "node dist/index.mjs",
+    "build": "tsup && shx chmod +x dist/client/index.mjs dist/db-server/index.mjs dist/launcher/index.mjs",
+    "start": "node dist/launcher/index.mjs",
     "prepare": "npm run build",
-    "test": "vitest run",
-    "changeset:publish": "pnpm build && changeset publish"
+    "changeset:publish": "pnpm build && changeset publish",
+    "test:unit": "vitest run --project unit-tests",
+    "test:e2e": "vitest run --project e2e-tests"
   },
   "bin": {
-    "mcp-duckdb-memory-server": "dist/index.mjs"
+    "mcp-duckdb-memory-server": "dist/launcher/index.mjs"
   },
   "files": [
     "dist"
@@ -36,7 +37,12 @@
   "dependencies": {
     "@duckdb/node-api": "1.2.0-alpha.15",
     "@modelcontextprotocol/sdk": "^1.6.0",
+    "@trpc/client": "^11.1.0",
+    "@trpc/server": "^11.1.0",
+    "fastify": "^5.2.1",
     "fuse.js": "^7.1.0",
+    "superjson": "^2.2.2",
+    "undici": "^7.8.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {

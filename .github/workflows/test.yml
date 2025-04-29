@@ -3,18 +3,24 @@ name: Test
 on: push
 
 jobs:
-  test:
+  unit-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-      - uses: actions/setup-node@v4
-        with:
-          cache: pnpm
-          cache-dependency-path: ./pnpm-lock.yaml
-          node-version-file: './package.json'
-      - run: pnpm install
-      - run: pnpm test
+      - uses: ./.github/actions/setup
+      - run: pnpm test:unit
+
+  e2e-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: pnpm test:e2e
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
       - run: pnpm build
+

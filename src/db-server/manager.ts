@@ -4,13 +4,12 @@ import {
   Relation,
   Observation,
   KnowledgeGraph,
-} from "./types";
-import { Logger, ConsoleLogger } from "./logger";
+} from "../schema";
+import { Logger, NullLogger } from "./logger";
 import { DuckDBInstance } from "@duckdb/node-api";
 import Fuse from "fuse.js";
 import { dirname } from "path";
 import { existsSync, mkdirSync } from "fs";
-import { extractError } from "./utils";
 
 /**
  * An implementation of the KnowledgeGraphManagerInterface that uses DuckDB and Fuse.js
@@ -66,7 +65,7 @@ export class DuckDBKnowledgeGraphManager
   constructor(dbPathResolver: () => string, logger?: Logger) {
     const dbPath = dbPathResolver();
     this.dbPath = dbPath;
-    this.logger = logger || new ConsoleLogger();
+    this.logger = logger || new NullLogger();
 
     // Create directory if it doesn't exist
     const dbPathDir = dirname(dbPath);
@@ -715,3 +714,15 @@ export class DuckDBKnowledgeGraphManager
     }
   }
 }
+
+const extractError = (error: unknown) => {
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+    };
+  } else {
+    return {
+      message: "Unknown error",
+    };
+  }
+};

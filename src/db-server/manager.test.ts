@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { DuckDBKnowledgeGraphManager } from "../src/manager";
-import { Entity, Relation, Observation } from "../src/types";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { DuckDBKnowledgeGraphManager } from "./manager";
 import { join } from "path";
 import { existsSync, unlinkSync } from "fs";
+import { Entity, Relation, Observation } from "../schema";
 
 describe("DuckDBFuseKnowledgeGraphManager", () => {
   // Test file path

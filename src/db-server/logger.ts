@@ -1,6 +1,3 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-
-// アプリケーション内で使用するログレベル
 export enum LogLevel {
   DEBUG = "debug",
   INFO = "info",
@@ -8,15 +5,6 @@ export enum LogLevel {
   ERROR = "error",
 }
 
-// LogLevelからMcpLogLevelへの変換マップ
-const logLevelToMcpLogLevel = {
-  [LogLevel.DEBUG]: "debug",
-  [LogLevel.INFO]: "info",
-  [LogLevel.WARN]: "warning",
-  [LogLevel.ERROR]: "error",
-} as const;
-
-// 文字列からLogLevelへの変換関数
 export function stringToLogLevel(level: string): LogLevel {
   switch (level.toLowerCase()) {
     case "debug":
@@ -29,18 +17,22 @@ export function stringToLogLevel(level: string): LogLevel {
     case "error":
       return LogLevel.ERROR;
     default:
-      return LogLevel.INFO; // デフォルトはINFO
+      return LogLevel.INFO;
   }
 }
 
-// ログデータの型定義
 export interface LogData {
   message: string;
   payload?: Record<string, unknown>;
 }
 
-// Nullロガー
-export class NullLogger implements Logger {
+export class Logger {
+  protected level: LogLevel = LogLevel.INFO;
+
+  protected setLevel(level: LogLevel): void {
+    this.level = level;
+  }
+
   debug(message: string, payload?: Record<string, unknown>): void {
     // No-op
   }
@@ -57,28 +49,20 @@ export class NullLogger implements Logger {
     // No-op
   }
 
-  setLevel(level: LogLevel): void {
-    // No-op
+  protected shouldLog(messageLevel: LogLevel): boolean {
+    const levels = [
+      LogLevel.DEBUG,
+      LogLevel.INFO,
+      LogLevel.WARN,
+      LogLevel.ERROR,
+    ];
+    return levels.indexOf(messageLevel) >= levels.indexOf(this.level);
   }
 }
 
-// 抽象ロガーインターフェース
-export interface Logger {
-  debug(message: string, payload?: Record<string, unknown>): void;
-  info(message: string, payload?: Record<string, unknown>): void;
-  warn(message: string, payload?: Record<string, unknown>): void;
-  error(message: string, payload?: Record<string, unknown>): void;
-  setLevel(level: LogLevel): void;
-}
+export class NullLogger extends Logger {}
 
-// コンソールロガー（デフォルト実装として）
-export class ConsoleLogger implements Logger {
-  private level: LogLevel = LogLevel.INFO;
-
-  setLevel(level: LogLevel): void {
-    this.level = level;
-  }
-
+export class ConsoleLogger extends Logger {
   debug(message: string, payload?: Record<string, unknown>): void {
     if (this.shouldLog(LogLevel.DEBUG)) {
       console.debug(message, payload);
@@ -101,15 +85,5 @@ export class ConsoleLogger implements Logger {
     if (this.shouldLog(LogLevel.ERROR)) {
       console.error(message, payload);
     }
-  }
-
-  private shouldLog(messageLevel: LogLevel): boolean {
-    const levels = [
-      LogLevel.DEBUG,
-      LogLevel.INFO,
-      LogLevel.WARN,
-      LogLevel.ERROR,
-    ];
-    return levels.indexOf(messageLevel) >= levels.indexOf(this.level);
   }
 }

@@ -112,7 +112,65 @@ DuckDB was chosen to address these challenges:
 
 ## Implementation Details
 
-This implementation uses DuckDB as the backend storage system, focusing on two key aspects:
+This implementation uses DuckDB as the backend storage system, with a modular architecture designed for reliability and performance.
+
+### System Architecture
+
+The core architecture focuses on the relationship between AI tools, MCP Server, and DB Server:
+
+```mermaid
+flowchart TD
+    subgraph "AI Tools"
+        Claude[Claude AI]
+        Cline[Cline]
+    end
+    
+    subgraph "MCP Servers"
+        MCP1[MCP Server]
+        MCP2[MCP Server]
+    end
+    
+    subgraph "Database Layer"
+        DB[DB Server]
+        DuckDB[DuckDB]
+    end
+    
+    Claude <--> MCP1
+    Cline <--> MCP2
+    
+    MCP1 --> |Unix-domain socket|DB
+    MCP2 --> |Unix-domain socket|DB
+    
+    DB <--> DuckDB
+    
+    %% Annotations
+    classDef ai fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef server fill:#bbf,stroke:#333,stroke-width:1px;
+    classDef db fill:#bfb,stroke:#333,stroke-width:1px;
+    
+    class Claude,Cline ai;
+    class MCP1,MCP2 server;
+    class DB,DuckDB db;
+```
+
+**Key architectural considerations:**
+
+1. **DuckDB Single Connection Limitation**: DuckDB only allows a single connection for read-write operations. This is a critical constraint that shapes the architecture:
+   - The DB Server acts as a connection manager that serializes all database operations
+   - Multiple MCP Servers connect to a single DB Server
+   - The DB Server ensures only one connection is active with DuckDB at any time
+
+2. **Communication Flow**:
+   - AI tools (like Claude and Cline) communicate with MCP Servers using the MCP protocol
+   - MCP Servers forward requests to the DB Server using JSON-RPC over Unix socket
+   - The DB Server executes SQL queries against DuckDB and returns results
+
+3. **Process Isolation**:
+   - The DB Server runs as a separate process for stability
+   - Multiple AI instances can connect through different MCP Servers
+   - All database operations are funneled through the single DB Server
+
+This architecture elegantly solves DuckDB's single-connection limitation while allowing multiple AI tools to interact with the knowledge graph simultaneously.
 
 ### Database Structure
 
