@@ -13,12 +13,7 @@ importers:
         version: 1.2.0-alpha.15
       '@modelcontextprotocol/sdk':
         specifier: ^1.6.0
-<<<<<<< HEAD
         version: 1.10.2
-||||||| parent of c38f203 (Add DB server)
-        version: 1.6.0
-=======
-        version: 1.6.0
       '@trpc/client':
         specifier: ^11.1.0
         version: 11.1.0(@trpc/server@11.1.0(typescript@5.7.3))(typescript@5.7.3)
@@ -28,7 +23,6 @@ importers:
       fastify:
         specifier: ^5.2.1
         version: 5.2.1
->>>>>>> c38f203 (Add DB server)
       fuse.js:
         specifier: ^7.1.0
         version: 7.1.0
@@ -957,22 +951,10 @@ packages:
     resolution: {integrity: sha512-g7nH6P6dyDioJogAAGprGpCtVImJhpPk/roCzdb3fIh61/s/nPsfR6onyMwkCAR/OlC3yBC0lESvUoQEAssIrw==}
     engines: {node: '>= 0.8'}
 
-<<<<<<< HEAD
-||||||| parent of c38f203 (Add DB server)
-  destroy@1.2.0:
-    resolution: {integrity: sha512-2sJGJTaXIIaR1w4iJSNoN0hnMY7Gpc/n8D4qSCJw8QqFWXf7cuAgnEHxBpweaVcPevC2l3KpjYCx3NypQQgaJg==}
-    engines: {node: '>= 0.8', npm: 1.2.8000 || >= 1.4.16}
-
-=======
   dequal@2.0.3:
     resolution: {integrity: sha512-0je+qPKHEMohvfRTCEo3CrPG6cAzAYgmzKyxRiYSSDkS6eGJdyVJm7WaYA5ECaAD9wLB2T4EEeymA5aFVcYXCA==}
     engines: {node: '>=6'}
 
-  destroy@1.2.0:
-    resolution: {integrity: sha512-2sJGJTaXIIaR1w4iJSNoN0hnMY7Gpc/n8D4qSCJw8QqFWXf7cuAgnEHxBpweaVcPevC2l3KpjYCx3NypQQgaJg==}
-    engines: {node: '>= 0.8', npm: 1.2.8000 || >= 1.4.16}
-
->>>>>>> c38f203 (Add DB server)
   detect-indent@6.1.0:
     resolution: {integrity: sha512-reYkTUJAZb9gUuZ2RvVCNhVHdg62RHnJ7WJl8ftMi4diZ6NWlciOzQN88pUhSELEwflJht4oQDv0F0BMlwaYtA==}
     engines: {node: '>=8'}
@@ -2772,16 +2754,8 @@ snapshots:
 
   depd@2.0.0: {}
 
-<<<<<<< HEAD
-||||||| parent of c38f203 (Add DB server)
-  destroy@1.2.0: {}
-
-=======
   dequal@2.0.3: {}
 
-  destroy@1.2.0: {}
-
->>>>>>> c38f203 (Add DB server)
   detect-indent@6.1.0: {}
 
   dir-glob@3.0.1:
