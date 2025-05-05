@@ -43,7 +43,7 @@
     "@changesets/cli": "^2.28.1",
     "@types/node": "^22.13.5",
     "prettier": "^3.5.2",
-    "shx": "^0.3.4",
+    "shx": "^0.4.0",
     "tsup": "^8.4.0",
     "typescript": "^5.7.3",
     "vitest": "^3.0.7"
